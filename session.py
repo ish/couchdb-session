@@ -1,8 +1,12 @@
+from proxy import wrap
+
+
 class Session(object):
 
     def __init__(self, db):
         self._db = db
         self._cache = {}
+        self._changed = set()
 
     def __getattr__(self, name):
         return getattr(self._db, name)
@@ -14,7 +18,13 @@ class Session(object):
         doc = self._cache.get(id)
         if doc is not None:
             return doc
-        doc = self._cache[id] = self._db[id]
+        return self._cached(self._db[id])
+
+    def _cached(self, doc):
+        def modified():
+            self._changed.add(doc.id)
+        doc = wrap(doc, modified)
+        self._cache[doc.id] = doc
         return doc
 
     def __setitem__(self, id, content):
@@ -33,9 +43,9 @@ class Session(object):
             return doc
         # Ask CouchDB and cache the response (if found).
         doc = self._db.get(id, default, **options)
-        if doc is not default:
-            self._cache[doc['_id']] = doc
-        return doc
+        if doc is default:
+            return doc
+        return self._cached(doc)
 
     def delete_attachment(self, doc, filename):
         raise NotImplementedError()
@@ -91,8 +101,7 @@ class SessionRow(object):
             cached = self._session._cache.get(doc.id)
             if cached is not None:
                 return cached
-            cached = self._session._cache[doc.id] = doc
-            return cached
+            return self._session._cached(doc)
     doc = property(_get_doc)
 
 
@@ -155,6 +164,153 @@ if __name__ == '__main__':
             row1 = iter(self.session.query(map_fun, include_docs=True)).next()
             row2 = iter(self.session.query(map_fun, include_docs=True)).next()
             assert row1.doc is row2.doc is self.session[row1.doc.id]
+
+
+    class TestModified(BaseTestCase):
+
+        def test_initial(self):
+            assert not self.session._changed
+
+        def test_clean_after_read(self):
+            doc_id = self.db.create({})
+            doc = self.session.get(doc_id)
+            assert len(self.session._changed) == 0
+
+        def test_change_existing_setitem(self):
+            doc_id = self.db.create({})
+            doc = self.session.get(doc_id)
+            doc['foo'] = 'bar'
+            assert len(self.session._changed) == 1
+
+        def test_change_existing_delitem(self):
+            doc_id = self.db.create({'foo': 'bar'})
+            doc = self.session.get(doc_id)
+            del doc['foo']
+            assert len(self.session._changed) == 1
+
+        def test_change_multi_existing(self):
+            doc_ids = list(r['_id'] for r in self.db.update([{}, {}]))
+            doc1 = self.session.get(doc_ids[0])
+            doc2 = self.session.get(doc_ids[1])
+            assert not self.session._changed
+            doc1['foo'] = ['bar']
+            assert len(self.session._changed) == 1
+            doc2['foo'] = ['bar']
+            assert len(self.session._changed) == 2
+
+        def test_change_dict_in_doc(self):
+            doc_id = self.db.create({'dict': {}})
+            doc = self.session.get(doc_id)
+            doc['dict']['foo'] = 'bar'
+            assert len(self.session._changed) == 1
+
+        def test_change_list_in_doc_setitem(self):
+            doc_id = self.db.create({'list': [None]})
+            doc = self.session.get(doc_id)
+            doc['list'][0] = 'foo'
+            assert len(self.session._changed) == 1
+
+        def test_change_list_in_doc_setitem_slice(self):
+            doc_id = self.db.create({'list': []})
+            doc = self.session.get(doc_id)
+            doc['list'][:] = ['foo']
+            assert len(self.session._changed) == 1
+
+        def test_change_list_in_doc_setitem_slice2(self):
+            doc_id = self.db.create({'list': range(3)})
+            doc = self.session.get(doc_id)
+            doc['list'][::2] = [None, None]
+            assert len(self.session._changed) == 1
+
+        def test_change_list_in_doc_delitem(self):
+            doc_id = self.db.create({'list': [None]})
+            doc = self.session.get(doc_id)
+            del doc['list'][0]
+            assert len(self.session._changed) == 1
+
+        def test_change_list_in_doc_delitem_slice(self):
+            doc_id = self.db.create({'list': []})
+            doc = self.session.get(doc_id)
+            del doc['list'][:]
+            assert len(self.session._changed) == 1
+
+        def test_change_list_in_doc_delitem_slice2(self):
+            doc_id = self.db.create({'list': [None, None, None]})
+            doc = self.session.get(doc_id)
+            del doc['list'][::2]
+            assert len(self.session._changed) == 1
+
+        def test_change_list_in_doc_append(self):
+            doc_id = self.db.create({'list': []})
+            doc = self.session.get(doc_id)
+            doc['list'].append('foo')
+            assert len(self.session._changed) == 1
+
+        def test_change_list_in_doc_extend(self):
+            doc_id = self.db.create({'list': []})
+            doc = self.session.get(doc_id)
+            doc['list'].extend([])
+            assert len(self.session._changed) == 1
+
+        def test_change_list_in_doc_insert(self):
+            doc_id = self.db.create({'list': []})
+            doc = self.session.get(doc_id)
+            doc['list'].insert(0, 'foo')
+            assert len(self.session._changed) == 1
+
+        def test_change_list_in_doc_pop(self):
+            doc_id = self.db.create({'list': [None]})
+            doc = self.session.get(doc_id)
+            doc['list'].pop(0)
+            assert len(self.session._changed) == 1
+
+        def test_change_list_in_doc_remove(self):
+            doc_id = self.db.create({'list': ['foo']})
+            doc = self.session.get(doc_id)
+            doc['list'].remove('foo')
+            assert len(self.session._changed) == 1
+
+        def test_change_collection_from_dict_in_doc(self):
+            doc_id = self.db.create({'dict': {'collection': {}}})
+            doc = self.session.get(doc_id)
+            doc['dict']['collection']['foo'] = 'bar'
+            assert len(self.session._changed) == 1
+
+        def test_change_collection_from_list_in_doc_getitem(self):
+            doc_id = self.db.create({'list': [{}]})
+            doc = self.session.get(doc_id)
+            doc['list'][0]['foo'] = 'bar'
+            assert len(self.session._changed) == 1
+
+        def test_change_collection_from_list_in_doc_slice(self):
+            doc_id = self.db.create({'list': [{}]})
+            doc = self.session.get(doc_id)
+            doc['list'][:][0]['foo'] = 'bar'
+            assert len(self.session._changed) == 1
+
+        def test_change_collection_from_list_in_doc_slice2(self):
+            doc_id = self.db.create({'list': [{}]})
+            doc = self.session.get(doc_id)
+            doc['list'][::2][0]['foo'] = 'bar'
+            assert len(self.session._changed) == 1
+
+        def test_get_scalar_from_doc(self):
+            doc_id = self.db.create({'foo': 'bar'})
+            doc = self.session.get(doc_id)
+            assert doc['foo'] == 'bar'
+            assert len(self.session._changed) == 0
+
+        def test_get_scalar_from_dict_in_doc(self):
+            doc_id = self.db.create({'dict': {'foo': 'bar'}})
+            doc = self.session.get(doc_id)
+            assert doc['dict']['foo'] == 'bar'
+            assert len(self.session._changed) == 0
+
+        def test_get_scalar_from_list_in_doc(self):
+            doc_id = self.db.create({'list': ['foo']})
+            doc = self.session.get(doc_id)
+            assert doc['list'][0] == 'foo'
+            assert len(self.session._changed) == 0
 
 
     unittest.main()
