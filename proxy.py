@@ -25,19 +25,19 @@ class Dictionary(UserDict.DictMixin, ObjectWrapper):
         self.__modified = modified
 
     def __getitem__(self, *a, **k):
-        value = super(Dictionary, self).__getitem__(*a, **k)
+        value = self.__subject__.__getitem__(*a, **k)
         return wrap(value, self.__modified)
 
     def __setitem__(self, *a, **k):
         self.__modified()
-        return super(Dictionary, self).__setitem__(*a, **k)
+        return self.__subject__.__setitem__(*a, **k)
 
     def __delitem__(self, *a, **k):
         self.__modified()
-        return super(Dictionary, self).__delitem__(*a, **k)
+        return self.__subject__.__delitem__(*a, **k)
 
     def keys(self, *a, **k):
-        return super(Dictionary, self).keys(*a, **k)
+        return self.__subject__.keys(*a, **k)
 
 
 class Document(Dictionary):

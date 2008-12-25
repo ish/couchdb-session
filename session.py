@@ -65,6 +65,18 @@ class Session(object):
     def view(self, *a, **k):
         return SessionViewResults(self, self._db.view(*a, **k))
 
+    #-----
+
+    def flush(self):
+        # Build a list of updates
+        updates = (dict(self._cache[doc_id]) for doc_id in self._changed)
+        # Perform a bulk update and fix up the cache with the new _rev of each
+        # document.
+        # XXX I wonder why we have to pass a list instance to update?
+        for response in self._db.update(list(updates)):
+            self._cache[response['_id']]['_rev'] = response['_rev']
+        self._changed.clear()
+
 
 class SessionViewResults(object):
 
@@ -311,6 +323,39 @@ if __name__ == '__main__':
             doc = self.session.get(doc_id)
             assert doc['list'][0] == 'foo'
             assert len(self.session._changed) == 0
+
+
+    class TestStorage(BaseTestCase):
+
+        def test_change_one(self):
+            doc_id = self.db.create({})
+            doc = self.session.get(doc_id)
+            doc['foo'] = 'bar'
+            self.session.flush()
+            assert not self.session._changed
+            doc = self.db.get(doc_id)
+            assert doc['foo'] == 'bar'
+
+        def test_change_multi(self):
+            doc1_id = self.db.create({})
+            doc2_id = self.db.create({})
+            doc1 = self.session.get(doc1_id)
+            doc2 = self.session.get(doc2_id)
+            doc1['foo'] = 'bar'
+            doc2['bar'] = 'foo'
+            self.session.flush()
+            assert not self.session._changed
+            assert self.db.get(doc1_id)['foo'] == 'bar'
+            assert self.db.get(doc2_id)['bar'] == 'foo'
+
+        def test_change_again(self):
+            doc_id = self.db.create({})
+            doc = self.session.get(doc_id)
+            doc['foo'] = 1
+            self.session.flush()
+            doc['foo'] = 2
+            self.session.flush()
+            assert self.db.get(doc_id)['foo'] == 2
 
 
     unittest.main()
