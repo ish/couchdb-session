@@ -1,5 +1,6 @@
 import copy
 import itertools
+import couchdb
 
 from proxy import wrap
 
@@ -11,16 +12,19 @@ class Session(object):
         self._cache = {}
         self._created = set()
         self._changed = set()
+        self._deleted = set()
 
     def __getattr__(self, name):
         return getattr(self._db, name)
 
     def __delitem__(self, id):
-        raise NotImplementedError()
+        raise NotImplementedError('Please use the delete(doc) method instead.')
 
     def __getitem__(self, id):
         doc = self._cache.get(id)
         if doc is not None:
+            if doc['_id'] in self._deleted:
+                raise couchdb.ResourceNotFound()
             return doc
         return self._cached(self._db[id])
 
@@ -35,22 +39,28 @@ class Session(object):
         raise NotImplementedError()
 
     def create(self, data):
-        # XXX Whenever I see an object being copied I always think it's
-        # probably wrong. However, in this case, I want the same semantics as
-        # the underlying db's create to continue and be able to return the
-        # cached document should it be asked for by ID.
+        # XXX Whenever I see an object being copied I assume it's probably
+        # wrong. However, in this case, I want the same semantics as the
+        # underlying db's create to continue and be able to return the cached
+        # document should it be asked for by ID.
         doc = copy.deepcopy(data)
         doc['_id'] = uuid.uuid4().hex
         self._created.add(doc['_id'])
         return self._cached(doc)['_id']
 
     def delete(self, doc):
-        raise NotImplementedError()
+        if doc['_id'] not in self._created:
+            self._deleted.add(doc['_id'])
+        else:
+            self._created.remove(doc['_id'])
+            del self._cache[doc['_id']]
 
     def get(self, id, default=None, **options):
         # Try cache first.
         doc = self._cache.get(id)
         if doc is not None:
+            if doc['_id'] in self._deleted:
+                return None
             return doc
         # Ask CouchDB and cache the response (if found).
         doc = self._db.get(id, default, **options)
@@ -80,15 +90,20 @@ class Session(object):
 
     def flush(self):
         # Build a list of updates
+        deletions = ({'_id': doc['_id'], '_rev': doc['_rev'], '_deleted': True} for doc in (self._cache[doc_id] for doc_id in self._deleted))
         additions = (dict(self._cache[doc_id]) for doc_id in self._created)
         changes = (dict(self._cache[doc_id]) for doc_id in self._changed)
-        updates = itertools.chain(additions, changes)
+        updates = itertools.chain(deletions, additions, changes)
         # Perform a bulk update and fix up the cache with the new _rev of each
         # document.
         # XXX I wonder why we have to pass a list instance to update?
         for response in self._db.update(list(updates)):
             self._cache[response['_id']]['_rev'] = response['_rev']
+        self._created.clear()
         self._changed.clear()
+        for doc_id in self._deleted:
+            del self._cache[doc_id]
+        self._deleted.clear()
 
 
 class SessionViewResults(object):
@@ -390,6 +405,28 @@ if __name__ == '__main__':
             assert self.session._db.get(doc_id)
             doc = self.session.get(doc_id)
             assert doc['_rev']
+
+
+    class TestDelete(BaseTestCase):
+
+        def test_delete_existing(self):
+            doc_id = self.session._db.create({})
+            doc = self.session.get(doc_id)
+            self.session.delete(doc)
+            assert len(self.session._deleted) == 1
+            assert doc['_id'] in self.session._deleted
+            assert self.session.get(doc_id) is None
+            self.assertRaises(couchdb.ResourceNotFound, self.session.__getitem__, doc_id)
+            self.session.flush()
+            assert self.session._db.get(doc_id) is None
+
+        def test_delete_created(self):
+            doc_id = self.session.create({})
+            doc = self.session.get(doc_id)
+            self.session.delete(doc)
+            assert not self.session._created
+            assert not self.session._deleted
+            assert doc_id not in self.session._cache
 
 
     unittest.main()
