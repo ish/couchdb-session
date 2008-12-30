@@ -14,6 +14,8 @@ class Session(object):
         self._changed = set()
         self._deleted = set()
 
+    #- Additional magic methods.
+
     def __getattr__(self, name):
         return getattr(self._db, name)
 
@@ -22,6 +24,8 @@ class Session(object):
         # on the call but without it a magic method called __length_hint__ is
         # called, followed soon after by an exception from couchdb.
         return iter(self._db)
+
+    #- Override couchdb.Database methods.
 
     def __delitem__(self, id):
         raise NotImplementedError('Please use the delete(doc) method instead.')
@@ -33,13 +37,6 @@ class Session(object):
                 raise couchdb.ResourceNotFound()
             return doc
         return self._cached(self._db[id])
-
-    def _cached(self, doc):
-        def modified():
-            self._changed.add(doc['_id'])
-        doc = wrap(doc, modified)
-        self._cache[doc['_id']] = doc
-        return doc
 
     def __setitem__(self, id, content):
         raise NotImplementedError()
@@ -92,7 +89,7 @@ class Session(object):
     def view(self, *a, **k):
         return SessionViewResults(self, self._db.view(*a, **k))
 
-    #-----
+    #- Additional methods.
 
     def flush(self):
         # Build a list of updates
@@ -110,6 +107,13 @@ class Session(object):
         for doc_id in self._deleted:
             del self._cache[doc_id]
         self._deleted.clear()
+
+    def _cached(self, doc):
+        def modified():
+            self._changed.add(doc['_id'])
+        doc = wrap(doc, modified)
+        self._cache[doc['_id']] = doc
+        return doc
 
 
 class SessionViewResults(object):
