@@ -1,3 +1,6 @@
+import copy
+import itertools
+
 from proxy import wrap
 
 
@@ -6,6 +9,7 @@ class Session(object):
     def __init__(self, db):
         self._db = db
         self._cache = {}
+        self._created = set()
         self._changed = set()
 
     def __getattr__(self, name):
@@ -22,16 +26,23 @@ class Session(object):
 
     def _cached(self, doc):
         def modified():
-            self._changed.add(doc.id)
+            self._changed.add(doc['_id'])
         doc = wrap(doc, modified)
-        self._cache[doc.id] = doc
+        self._cache[doc['_id']] = doc
         return doc
 
     def __setitem__(self, id, content):
         raise NotImplementedError()
 
     def create(self, data):
-        raise NotImplementedError()
+        # XXX Whenever I see an object being copied I always think it's
+        # probably wrong. However, in this case, I want the same semantics as
+        # the underlying db's create to continue but still be able to return
+        # the document should it be asked for by ID.
+        doc = copy.deepcopy(data)
+        doc['_id'] = uuid.uuid4().hex
+        self._created.add(doc['_id'])
+        return self._cached(doc)['_id']
 
     def delete(self, doc):
         raise NotImplementedError()
@@ -69,7 +80,9 @@ class Session(object):
 
     def flush(self):
         # Build a list of updates
-        updates = (dict(self._cache[doc_id]) for doc_id in self._changed)
+        additions = (dict(self._cache[doc_id]) for doc_id in self._created)
+        changes = (dict(self._cache[doc_id]) for doc_id in self._changed)
+        updates = itertools.chain(additions, changes)
         # Perform a bulk update and fix up the cache with the new _rev of each
         # document.
         # XXX I wonder why we have to pass a list instance to update?
@@ -110,7 +123,7 @@ class SessionRow(object):
     def _get_doc(self):
         doc = self._row.doc
         if doc is not None:
-            cached = self._session._cache.get(doc.id)
+            cached = self._session._cache.get(doc['_id'])
             if cached is not None:
                 return cached
             return self._session._cached(doc)
@@ -122,6 +135,7 @@ if __name__ == '__main__':
     import unittest
     import uuid
     import couchdb
+
 
     class BaseTestCase(unittest.TestCase):
 
@@ -167,7 +181,7 @@ if __name__ == '__main__':
             row1 = iter(self.session.view('_all_docs', include_docs=True)).next()
             row2 = iter(self.session.view('_all_docs', include_docs=True)).next()
             assert row1.doc is row2.doc is not None
-            assert row1.doc is self.session[row1.doc.id]
+            assert row1.doc is self.session[row1.doc['_id']]
 
         def test_query(self):
             map_fun = "function(doc) {emit(null, null);}"
@@ -175,10 +189,16 @@ if __name__ == '__main__':
             assert row1.doc is None
             row1 = iter(self.session.query(map_fun, include_docs=True)).next()
             row2 = iter(self.session.query(map_fun, include_docs=True)).next()
-            assert row1.doc is row2.doc is self.session[row1.doc.id]
+            assert row1.doc is row2.doc is self.session[row1.doc['_id']]
+
+        def test_create(self):
+            doc_id = self.session.create({})
+            assert len(self.session._cache) == 1
+            assert doc_id in self.session._cache
+            assert self.session.get(doc_id) is self.session.get(doc_id)
 
 
-    class TestModified(BaseTestCase):
+    class TestChangeTracking(BaseTestCase):
 
         def test_initial(self):
             assert not self.session._changed
@@ -325,7 +345,7 @@ if __name__ == '__main__':
             assert len(self.session._changed) == 0
 
 
-    class TestStorage(BaseTestCase):
+    class TestUpdates(BaseTestCase):
 
         def test_change_one(self):
             doc_id = self.db.create({})
@@ -356,6 +376,20 @@ if __name__ == '__main__':
             doc['foo'] = 2
             self.session.flush()
             assert self.db.get(doc_id)['foo'] == 2
+
+
+    class TestCreation(BaseTestCase):
+
+        def test_create_one(self):
+            doc_id = self.session.create({})
+            assert doc_id
+            # Should have been added to the _created list.
+            assert len(self.session._created) == 1
+            self.session.flush()
+            # Should be added to the database.
+            assert self.session._db.get(doc_id)
+            doc = self.session.get(doc_id)
+            assert doc['_rev']
 
 
     unittest.main()
