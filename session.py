@@ -17,6 +17,12 @@ class Session(object):
     def __getattr__(self, name):
         return getattr(self._db, name)
 
+    def __iter__(self):
+        # XXX Not entirely sure why we need this as all we're doing if passing
+        # on the call but without it a magic method called __length_hint__ is
+        # called, followed soon after by an exception from couchdb.
+        return iter(self._db)
+
     def __delitem__(self, id):
         raise NotImplementedError('Please use the delete(doc) method instead.')
 
@@ -165,6 +171,15 @@ if __name__ == '__main__':
 
         def tearDown(self):
             del self.server[self.db_name]
+
+
+    class TestComposition(BaseTestCase):
+
+        def test_iter(self):
+            """
+            Check iteration (doc id generator) works.
+            """
+            assert list(self.session._db) == list(self.session)
 
 
     class TestView(BaseTestCase):
