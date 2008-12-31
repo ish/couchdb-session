@@ -14,7 +14,7 @@ class Session(object):
         self._cache = {}
         self._created = set()
         self._changed = set()
-        self._deleted = set()
+        self._deleted = {}
 
     #- Additional magic methods.
 
@@ -70,13 +70,13 @@ class Session(object):
             del self._cache[doc['_id']]
         else:
             self._changed.discard(doc['_id'])
-            self._deleted.add(doc['_id'])
+            self._deleted[doc['_id']] = doc['_rev']
 
     def get(self, id, default=None, **options):
         # Try cache first.
         doc = self._cache.get(id)
         if doc is not None:
-            if doc['_id'] in self._deleted:
+            if doc['_id'] in self._deleted and doc['_id'] not in self._created:
                 return None
             return doc
         # Ask CouchDB and cache the response (if found).
@@ -106,21 +106,30 @@ class Session(object):
     #- Additional methods.
 
     def flush(self):
-        # Build a list of updates
-        deletions = ({'_id': doc['_id'], '_rev': doc['_rev'], '_deleted': True} for doc in (self._cache[doc_id] for doc_id in self._deleted))
+        # XXX Due to a bug in CouchDB (see issue COUCHDB-188) we can't do
+        # deletions at the same time as additions if the list of updates
+        # includes a delete and create for the same id. For now, let's keep
+        # deletions out of the general updates list and make two calls to the
+        # backend.
+        # XXX We can't pass a generator to couchdb's Database.update.
+        # XXX We can only pass dict instances in the list to couchdb's Database.update.
+        # Build a list of deletions.
+        deletions = [{'_id': id, '_rev': rev, '_deleted': True} for (id, rev) in self._deleted.iteritems()]
+        # Build a list of other updates.
         additions = (dict(self._cache[doc_id]) for doc_id in self._created)
         changes = (dict(self._cache[doc_id]) for doc_id in self._changed)
-        updates = itertools.chain(deletions, additions, changes)
-        # Perform a bulk update and fix up the cache with the new _rev of each
-        # document.
-        # XXX I wonder why we have to pass a list instance to update?
-        for response in self._db.update(list(updates)):
+        updates = list(itertools.chain(additions, changes))
+        # Send deletions and clean up cache.
+        self._db.update(deletions)
+        for doc_id in self._deleted:
+            if doc_id not in self._created:
+                del self._cache[doc_id]
+        self._deleted.clear()
+        # Perform updates and fix up the cache with the new _revs.
+        for response in self._db.update(updates):
             self._cache[response['_id']]['_rev'] = response['_rev']
         self._created.clear()
         self._changed.clear()
-        for doc_id in self._deleted:
-            del self._cache[doc_id]
-        self._deleted.clear()
 
     def _cached(self, doc):
         def modified():

@@ -346,6 +346,19 @@ class TestDelete(BaseTestCase):
         assert doc_id not in self.db
 
 
+class TestCombinations(BaseTestCase):
+
+    def test_create_using_deleted_doc_id(self):
+        doc_id = self.db.create({'foo': 'bar'})
+        doc = self.session.get(doc_id)
+        self.session.delete(doc)
+        self.session.create({'_id': doc_id, 'foo': 'wibble'})
+        assert self.session.get(doc_id)['foo'] == 'wibble'
+        self.session.flush()
+        assert len(self.db) == 11
+        assert self.db.get(doc_id)['foo'] == 'wibble'
+
+
 if __name__ == '__main__':
     unittest.main()
 
