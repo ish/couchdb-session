@@ -49,7 +49,9 @@ class Session(object):
         # if it's been changed.
         if '_rev' in content:
             return
-        self.create(content)
+        doc = dict(content)
+        doc['_id'] = id
+        self.create(doc)
 
     def create(self, data):
         # XXX Whenever I see an object being copied I assume it's probably
@@ -57,7 +59,8 @@ class Session(object):
         # underlying db's create to continue and be able to return the cached
         # document should it be asked for by ID.
         doc = copy.deepcopy(data)
-        doc['_id'] = uuid.uuid4().hex
+        if '_id' not in doc:
+            doc['_id'] = uuid.uuid4().hex
         self._created.add(doc['_id'])
         return self._cached(doc)['_id']
 

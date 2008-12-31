@@ -289,10 +289,20 @@ class TestCreation(BaseTestCase):
         doc = self.session.get(doc_id)
         assert doc['_rev']
 
+    def test_create_with_id(self):
+        doc_id = self.session.create({'_id': 'foo'})
+        assert doc_id == 'foo'
+        assert len(self.session._cache) == 1
+        assert len(self.session._created) == 1
+        assert 'foo' in self.session._created
+        assert 'foo' in self.session._cache
+
     def test_setitem(self):
         self.session['foo'] = {}
         assert len(self.session._cache) == 1
         assert len(self.session._created) == 1
+        assert 'foo' in self.session._cache
+        assert 'foo' in self.session._created
 
 
 class TestDelete(BaseTestCase):
