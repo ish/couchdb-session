@@ -62,11 +62,12 @@ class Session(object):
         return self._cached(doc)['_id']
 
     def delete(self, doc):
-        if doc['_id'] not in self._created:
-            self._deleted.add(doc['_id'])
-        else:
+        if doc['_id'] in self._created:
             self._created.remove(doc['_id'])
             del self._cache[doc['_id']]
+        else:
+            self._changed.discard(doc['_id'])
+            self._deleted.add(doc['_id'])
 
     def get(self, id, default=None, **options):
         # Try cache first.
@@ -576,6 +577,17 @@ if __name__ == '__main__':
             assert not self.session._created
             assert not self.session._deleted
             assert doc_id not in self.session._cache
+
+        def test_delete_changed(self):
+            doc_id = self.db.create({})
+            doc = self.session.get(doc_id)
+            doc['foo'] = 'bar'
+            assert len(self.session._changed) == 1
+            assert doc_id in self.session._changed
+            self.session.delete(doc)
+            assert not self.session._changed
+            assert len(self.session._deleted) == 1
+            assert doc_id in self.session._deleted
 
         def test_delitem(self):
             doc_id = self.db.create({})
