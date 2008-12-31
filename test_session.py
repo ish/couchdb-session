@@ -90,6 +90,15 @@ class TestCaching(BaseTestCase):
         assert doc_id in self.session._cache
         assert self.session.get(doc_id) is self.session.get(doc_id)
 
+    def test_delete(self):
+        doc_id = self.db.create({})
+        doc = self.session.get(doc_id)
+        assert len(self.session._cache) == 1
+        assert doc_id in self.session._cache
+        self.session.delete(doc)
+        assert len(self.session._cache) == 0
+        assert doc_id not in self.session._cache
+
 
 class TestChangeTracking(BaseTestCase):
 

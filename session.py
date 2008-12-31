@@ -67,18 +67,18 @@ class Session(object):
     def delete(self, doc):
         if doc['_id'] in self._created:
             self._created.remove(doc['_id'])
-            del self._cache[doc['_id']]
         else:
             self._changed.discard(doc['_id'])
             self._deleted[doc['_id']] = doc['_rev']
+        del self._cache[doc['_id']]
 
     def get(self, id, default=None, **options):
         # Try cache first.
         doc = self._cache.get(id)
         if doc is not None:
-            if doc['_id'] in self._deleted and doc['_id'] not in self._created:
-                return None
             return doc
+        if id in self._deleted:
+            return None
         # Ask CouchDB and cache the response (if found).
         doc = self._db.get(id, default, **options)
         if doc is default:
@@ -121,9 +121,6 @@ class Session(object):
         updates = list(itertools.chain(additions, changes))
         # Send deletions and clean up cache.
         self._db.update(deletions)
-        for doc_id in self._deleted:
-            if doc_id not in self._created:
-                del self._cache[doc_id]
         self._deleted.clear()
         # Perform updates and fix up the cache with the new _revs.
         for response in self._db.update(updates):
