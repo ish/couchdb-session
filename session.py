@@ -45,7 +45,11 @@ class Session(object):
         return self._cached(self._db[id])
 
     def __setitem__(self, id, content):
-        raise NotImplementedError()
+        # Ignore docs with a _rev, we should already be tracking changes to it
+        # if it's been changed.
+        if '_rev' in content:
+            return
+        self.create(content)
 
     def create(self, data):
         # XXX Whenever I see an object being copied I assume it's probably
@@ -433,6 +437,11 @@ if __name__ == '__main__':
             self.session.flush()
             assert self.db.get(doc_id)['foo'] == 2
 
+        def test_setitem(self):
+            self.session['1'] = self.session['1']
+            assert len(self.session._cache) == 1
+            assert len(self.session._changed) == 0
+
 
     class TestCreation(BaseTestCase):
 
@@ -446,6 +455,11 @@ if __name__ == '__main__':
             assert self.session._db.get(doc_id)
             doc = self.session.get(doc_id)
             assert doc['_rev']
+
+        def test_setitem(self):
+            self.session['foo'] = {}
+            assert len(self.session._cache) == 1
+            assert len(self.session._created) == 1
 
 
     class TestDelete(BaseTestCase):
