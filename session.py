@@ -264,7 +264,6 @@ if __name__ == '__main__':
 
     import unittest
     import uuid
-    import couchdb
 
 
     class BaseTestCase(unittest.TestCase):
