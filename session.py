@@ -19,19 +19,22 @@ class Session(object):
     def __getattr__(self, name):
         return getattr(self._db, name)
 
+    #- Override couchdb.Database methods.
+
     def __iter__(self):
         # XXX Not entirely sure why we need this as all we're doing if passing
         # on the call but without it a magic method called __length_hint__ is
         # called, followed soon after by an exception from couchdb.
         return iter(self._db)
 
-    #- Override couchdb.Database methods.
-
     def __len__(self):
         return len(self._db)
 
     def __delitem__(self, id):
-        raise NotImplementedError('Please use the delete(doc) method instead.')
+        # XXX Really not sure this is a good way to delete a document, i.e.
+        # without specifying the _rev, but I'll reluctantly support it because
+        # the underlying database does.
+        self.delete(self[id])
 
     def __getitem__(self, id):
         doc = self._cache.get(id)
@@ -465,6 +468,14 @@ if __name__ == '__main__':
             assert not self.session._created
             assert not self.session._deleted
             assert doc_id not in self.session._cache
+
+        def test_delitem(self):
+            doc_id = self.db.create({})
+            del self.session[doc_id]
+            assert len(self.session._deleted) == 1
+            assert doc_id in self.session._deleted
+            self.session.flush()
+            assert doc_id not in self.db
 
 
     unittest.main()
