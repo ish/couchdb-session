@@ -27,6 +27,9 @@ class Session(object):
 
     #- Override couchdb.Database methods.
 
+    def __len__(self):
+        return len(self._db)
+
     def __delitem__(self, id):
         raise NotImplementedError('Please use the delete(doc) method instead.')
 
@@ -184,6 +187,22 @@ if __name__ == '__main__':
             Check iteration (doc id generator) works.
             """
             assert list(self.session._db) == list(self.session)
+
+        def test_contains(self):
+            doc_id = self.session._db.create({})
+            assert '1' in self.session
+
+        def test_len(self):
+            assert len(self.session) == 10
+
+        def test_nonzero(self):
+            assert bool(self.session)
+
+        def test_get_name(self):
+            assert self.session.name == self.db.name
+
+        def test_info(self):
+            assert self.session.info() == self.db.info()
 
 
     class TestView(BaseTestCase):
