@@ -1,0 +1,98 @@
+Installation
+============
+
+For now, it's a single module. Just copy it somewhere and import it as you
+would import any other Python module.
+
+Requirements:
+
+couchdb - does all the real work. easy_install python-couchdb or download it
+from http://pypi.python.org/pypi/CouchDB.
+
+ProxyTypes - used to simplify wrapping documents to spot changes.
+"easy_install ProxyTypes" or download it from
+http://pypi.python.org/pypi/ProxyTypes.
+
+
+Usage
+=====
+
+The basic design is that an editing session behaves like a python-couchdb
+Database instance as far as possible but performs all changes in a single bulk
+update. The API should, therefore, by familiar already (which is my way of
+saying this thing doesn't need documenting much ;-)).
+
+There are two main differences:
+
+1. Changes to existing documents are automagically tracked. No need to
+   explicitly put them to the database.
+2. You must call flush() to push the changes to the CouchDB.
+
+{{{
+import couchdb
+import session
+
+# Create a reference to a CouchDB database.
+db = couchdb.Server()[db_name]
+# Create an editing session
+S = session.Session(db)
+# Create an empty document
+doc_id = S.create({})
+# Make a change to an existing document
+S['existing_id']['foo'] = 'bar'
+# Delete an existing document
+del S['another_existing_id']
+# Flush all the changes to the CouchDB backend
+S.flush()
+}}}
+
+
+Limitations
+===========
+
+* No support for attachments (yet).
+* Not tested with (and may not even support) python-couchdb's schema. In other
+  words, documents as dicts only.
+* View counts may be affected by deleted documents.
+* Views results may be out of sync until flushed.
+* Attachments cannot (efficiently, at least) be include in the bulk update.
+
+
+TODO
+====
+
+* Come up with a good name.
+* Create package.
+* Add some real-world tests.
+* Support attachments.
+
+
+IDEAS
+=====
+
+Hooks
+-----
+
+Notification hook for when documents are added, changed, or deleted. Hook
+functions should be passed a reference to the editing session so they can
+bundle changes in the same bulk update.
+
+
+Attachments
+-----------
+
+Attachment should be cached to the file system somewhere and uploaded after the
+bulk update. Unfortunately, there's no way to efficiently include attachment
+changes in the bulk update so they'll have to happen out-of-band.
+
+
+Document diffs
+--------------
+
+The change tracking has potential to be enhanced to build document diffs
+containing actual data operations as opposed to a diff built by comparing
+before and after versions.
+
+Might be interesting for hooks and would be awesome if/when CouchDB supports
+partial document updates.
+
