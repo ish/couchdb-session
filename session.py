@@ -1,9 +1,10 @@
 import copy
 import itertools
-import couchdb
 import uuid
 import UserDict
 from peak.util.proxies import ObjectWrapper
+
+import couchdb
 
 
 class Session(object):
@@ -38,12 +39,10 @@ class Session(object):
         self.delete(self[id])
 
     def __getitem__(self, id):
-        doc = self._cache.get(id)
-        if doc is not None:
-            if doc['_id'] in self._deleted:
-                raise couchdb.ResourceNotFound()
-            return doc
-        return self._cached(self._db[id])
+        doc = self.get(id)
+        if doc is None:
+            raise couchdb.ResourceNotFound()
+        return doc
 
     def __setitem__(self, id, content):
         # Ignore docs with a _rev, we should already be tracking changes to it
