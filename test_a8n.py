@@ -152,6 +152,21 @@ class TestNested(unittest.TestCase):
         assert changes == [{'action': 'create', 'path': [0, 0], 'value': 'foo'}]
 
 
+class TestNasty(unittest.TestCase):
+
+    def test_changed_path(self):
+        changes = []
+        obj = a8n.track([{}, {}], [], changes)
+        a_dict = obj[1]
+        a_dict['a'] = 'a'
+        assert changes == [{'action': 'create', 'path': [1, 'a'], 'value': 'a'}]
+        del obj[0]
+        assert changes == [{'action': 'create', 'path': [0, 'a'], 'value': 'a'}]
+        a_dict['b'] = 'b'
+        assert changes == [{'action': 'create', 'path': [0, 'a'], 'value': 'a'},
+                           {'action': 'create', 'path': [0, 'b'], 'value': 'b'}]
+
+
 """
 class _TestChangeTracking(unittest.TestCase):
 
