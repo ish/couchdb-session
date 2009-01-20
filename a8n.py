@@ -143,10 +143,7 @@ class List(ObjectWrapper):
     def __delitem__(self, pos):
         self.__subject__.__delitem__(pos)
         self.__recorder.remove(pos)
-        def adjuster(path):
-            if path > pos:
-                return path-1
-        self.__recorder.adjust_child_paths(adjuster)
+        self.__recorder.adjust_child_paths(_make_list_adjuster(-1, pos))
 
     def __setslice__(self, *a, **k):
         raise NotImplementedError()
@@ -166,6 +163,7 @@ class List(ObjectWrapper):
 
     def insert(self, pos, item):
         pos = self.__real_pos(pos)
+        self.__recorder.adjust_child_paths(_make_list_adjuster(+1, pos))
         self.__recorder.create(pos, item)
         return self.__subject__.insert(pos, item)
 
@@ -176,11 +174,13 @@ class List(ObjectWrapper):
         except IndexError:
             raise
         self.__recorder.remove(pos)
+        self.__recorder.adjust_child_paths(_make_list_adjuster(-1, pos+1))
         return item
 
     def remove(self, item):
         pos = self.index(item)
         self.__recorder.remove(pos)
+        self.__recorder.adjust_child_paths(_make_list_adjuster(-1, pos+1))
         return self.__subject__.remove(item)
 
     def reverse(self, *a, **k):
@@ -193,4 +193,13 @@ class List(ObjectWrapper):
         if pos < 0:
             pos = len(self.__subject__)+pos
         return max(0, min(pos, len(self.__subject__)))
+
+
+def _make_list_adjuster(adjustment, start, end=None):
+    def adjuster(path):
+        if (start is  None or start <= path) and \
+           (end is None or path < end):
+            return path + adjustment
+        return path
+    return adjuster
 

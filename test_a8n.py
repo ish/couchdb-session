@@ -3,6 +3,12 @@ import unittest
 import a8n
 
 
+"""
+TODO:
+    test slice operations
+"""
+
+
 class TestDictTracking(unittest.TestCase):
 
     def test_add_item(self):
@@ -152,9 +158,9 @@ class TestNested(unittest.TestCase):
         assert list(tracker) == [{'action': 'create', 'path': [0, 0], 'value': 'foo'}]
 
 
-class TestNasty(unittest.TestCase):
+class TestChangingPaths(unittest.TestCase):
 
-    def test_changed_path(self):
+    def test_delitem(self):
         tracker = a8n.Tracker()
         obj = tracker.track([{}, {}])
         a_dict = obj[1]
@@ -167,6 +173,33 @@ class TestNasty(unittest.TestCase):
         assert list(tracker) == [{'action': 'create', 'path': [1, 'a'], 'value': 'a'},
                                  {'action': 'remove', 'path': [0]},
                                  {'action': 'create', 'path': [0, 'b'], 'value': 'b'}]
+
+    def test_insert(self):
+        tracker = a8n.Tracker()
+        obj = tracker.track([{}, {}])
+        a_dict = obj[1]
+        obj.insert(0, {})
+        a_dict['foo'] = 'bar'
+        assert list(tracker) == [{'action': 'create', 'path': [0], 'value': {}},
+                                 {'action': 'create', 'path': [2, 'foo'], 'value': 'bar'}]
+
+    def test_pop(self):
+        tracker = a8n.Tracker()
+        obj = tracker.track([{}, {}])
+        a_dict = obj[1]
+        obj.pop(0)
+        a_dict['foo'] = 'bar'
+        assert list(tracker) == [{'action': 'remove', 'path': [0]},
+                                 {'action': 'create', 'path': [0, 'foo'], 'value': 'bar'}]
+
+    def test_remove(self):
+        tracker = a8n.Tracker()
+        obj = tracker.track([{'a': 1}, {'b': 2}])
+        a_dict = obj[1]
+        obj.remove({'a': 1})
+        a_dict['b'] = 'b'
+        assert list(tracker) == [{'action': 'remove', 'path': [0]},
+                                 {'action': 'edit', 'path': [0, 'b'], 'value': 'b'}]
 
 
 """
