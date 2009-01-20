@@ -6,165 +6,165 @@ import a8n
 class TestDictTracking(unittest.TestCase):
 
     def test_add_item(self):
-        changes = []
-        obj = a8n.track({}, [], changes)
+        tracker = a8n.Tracker()
+        obj = tracker.track({})
         obj['foo'] = 'bar'
-        assert changes == [{'action': 'create', 'path': ['foo'], 'value': 'bar'}]
+        assert list(tracker) == [{'action': 'create', 'path': ['foo'], 'value': 'bar'}]
 
     def test_change_item(self):
-        changes = []
-        obj = a8n.track({'foo': 'foo'}, [], changes)
+        tracker = a8n.Tracker()
+        obj = tracker.track({'foo': 'foo'})
         obj['foo'] = 'bar'
-        assert changes == [{'action': 'edit', 'path': ['foo'], 'value': 'bar'}]
+        assert list(tracker) == [{'action': 'edit', 'path': ['foo'], 'value': 'bar'}]
 
     def test_del_item(self):
-        changes = []
-        obj = a8n.track({'foo': 'foo'}, [], changes)
+        tracker = a8n.Tracker()
+        obj = tracker.track({'foo': 'foo'})
         del obj['foo']
-        assert changes == [{'action': 'remove', 'path': ['foo']}]
+        assert list(tracker) == [{'action': 'remove', 'path': ['foo']}]
 
     def test_del_missing_item(self):
-        changes = []
-        obj = a8n.track({}, [], changes)
+        tracker = a8n.Tracker()
+        obj = tracker.track({})
         try:
             del obj['foo']
         except KeyError:
             pass
-        assert changes == []
+        assert list(tracker) == []
 
 
 class TestListTracking(unittest.TestCase):
 
     def test_setitem(self):
-        changes = []
-        obj = a8n.track(['foo'], [], changes)
+        tracker = a8n.Tracker()
+        obj = tracker.track(['foo'])
         obj[0] = 'bar'
-        assert changes == [{'action': 'edit', 'path': [0], 'value': 'bar'}]
+        assert list(tracker) == [{'action': 'edit', 'path': [0], 'value': 'bar'}]
 
     def test_setitem_error(self):
-        changes = []
-        obj = a8n.track(['foo'], [], changes)
+        tracker = a8n.Tracker()
+        obj = tracker.track(['foo'])
         try:
             obj[1] = 'bar'
         except IndexError:
             pass
-        assert changes == []
+        assert list(tracker) == []
 
     def test_delitem(self):
-        changes = []
-        obj = a8n.track(['foo'], [], changes)
+        tracker = a8n.Tracker()
+        obj = tracker.track(['foo'])
         del obj[0]
-        assert changes == [{'action': 'remove', 'path': [0]}]
+        assert list(tracker) == [{'action': 'remove', 'path': [0]}]
 
     def test_delitem_error(self):
-        changes = []
-        obj = a8n.track(['foo'], [], changes)
+        tracker = a8n.Tracker()
+        obj = tracker.track(['foo'])
         try:
             del obj[1]
         except IndexError:
             pass
-        assert changes == []
+        assert list(tracker) == []
 
     def test_append(self):
-        changes = []
-        obj = a8n.track([], [], changes)
+        tracker = a8n.Tracker()
+        obj = tracker.track([])
         obj.append('foo')
-        assert changes == [{'action': 'create', 'path': [0], 'value': 'foo'}]
+        assert list(tracker) == [{'action': 'create', 'path': [0], 'value': 'foo'}]
 
     def test_extend(self):
-        changes = []
-        obj = a8n.track([], [], changes)
+        tracker = a8n.Tracker()
+        obj = tracker.track([])
         obj.extend(['foo', 'bar'])
-        assert changes == [
+        assert list(tracker) == [
             {'action': 'create', 'path': [0], 'value': 'foo'},
             {'action': 'create', 'path': [1], 'value': 'bar'},
         ]
 
     def test_insert(self):
-        changes = []
-        obj = a8n.track([1, 3], [], changes)
+        tracker = a8n.Tracker()
+        obj = tracker.track([1, 3])
         obj.insert(1, 2)
-        assert changes == [{'action': 'create', 'path': [1], 'value': 2}]
-        changes = []
-        obj = a8n.track([], [], changes)
+        assert list(tracker) == [{'action': 'create', 'path': [1], 'value': 2}]
+        tracker = a8n.Tracker()
+        obj = tracker.track([])
         obj.insert(10, 1)
-        assert changes == [{'action': 'create', 'path': [0], 'value': 1}]
-        changes = []
-        obj = a8n.track([], [], changes)
+        assert list(tracker) == [{'action': 'create', 'path': [0], 'value': 1}]
+        tracker = a8n.Tracker()
+        obj = tracker.track([])
         obj.insert(-10, 1)
-        assert changes == [{'action': 'create', 'path': [0], 'value': 1}]
+        assert list(tracker) == [{'action': 'create', 'path': [0], 'value': 1}]
 
     def test_pop(self):
-        changes = []
-        obj = a8n.track([1, 2, 3], [], changes)
+        tracker = a8n.Tracker()
+        obj = tracker.track([1, 2, 3])
         obj.pop(0)
-        assert changes == [{'action': 'remove', 'path': [0]}]
-        changes = []
-        obj = a8n.track([1, 2, 3], [], changes)
+        assert list(tracker) == [{'action': 'remove', 'path': [0]}]
+        tracker = a8n.Tracker()
+        obj = tracker.track([1, 2, 3])
         obj.pop()
-        assert changes == [{'action': 'remove', 'path': [2]}]
-        changes = []
-        obj = a8n.track([1, 2, 3], [], changes)
+        assert list(tracker) == [{'action': 'remove', 'path': [2]}]
+        tracker = a8n.Tracker()
+        obj = tracker.track([1, 2, 3])
         try:
             obj.pop(100)
         except IndexError:
             pass
-        assert changes == []
+        assert list(tracker) == []
 
     def test_remove(self):
-        changes = []
-        obj = a8n.track([1, 2, 3], [], changes)
+        tracker = a8n.Tracker()
+        obj = tracker.track([1, 2, 3])
         obj.remove(2)
-        assert changes == [{'action': 'remove', 'path': [1]}]
-        changes = []
-        obj = a8n.track([1, 2, 3], [], changes)
+        assert list(tracker) == [{'action': 'remove', 'path': [1]}]
+        tracker = a8n.Tracker()
+        obj = tracker.track([1, 2, 3])
         try:
             obj.remove(10)
         except ValueError:
             pass
-        assert changes == []
+        assert list(tracker) == []
 
 
 class TestNested(unittest.TestCase):
 
     def test_dict_in_dict(self):
-        changes = []
-        obj = a8n.track({'dict': {}}, [], changes)
+        tracker = a8n.Tracker()
+        obj = tracker.track({'dict': {}})
         obj['dict']['foo'] = 'bar'
-        assert changes == [{'action': 'create', 'path': ['dict', 'foo'], 'value': 'bar'}]
+        assert list(tracker) == [{'action': 'create', 'path': ['dict', 'foo'], 'value': 'bar'}]
 
     def test_dict_in_list(self):
-        changes = []
-        obj = a8n.track([{}], [], changes)
+        tracker = a8n.Tracker()
+        obj = tracker.track([{}])
         obj[0]['foo'] = 'bar'
-        assert changes == [{'action': 'create', 'path': [0, 'foo'], 'value': 'bar'}]
+        assert list(tracker) == [{'action': 'create', 'path': [0, 'foo'], 'value': 'bar'}]
 
     def test_list_in_dict(self):
-        changes = []
-        obj = a8n.track({'list': []}, [], changes)
+        tracker = a8n.Tracker()
+        obj = tracker.track({'list': []})
         obj['list'].append('foo')
-        assert changes == [{'action': 'create', 'path': ['list', 0], 'value': 'foo'}]
+        assert list(tracker) == [{'action': 'create', 'path': ['list', 0], 'value': 'foo'}]
 
     def test_list_in_list(self):
-        changes = []
-        obj = a8n.track([[]], [], changes)
+        tracker = a8n.Tracker()
+        obj = tracker.track([[]])
         obj[0].append('foo')
-        assert changes == [{'action': 'create', 'path': [0, 0], 'value': 'foo'}]
+        assert list(tracker) == [{'action': 'create', 'path': [0, 0], 'value': 'foo'}]
 
 
 class TestNasty(unittest.TestCase):
 
     def test_changed_path(self):
-        changes = []
-        obj = a8n.track([{}, {}], [], changes)
+        tracker = a8n.Tracker()
+        obj = tracker.track([{}, {}])
         a_dict = obj[1]
         a_dict['a'] = 'a'
-        assert changes == [{'action': 'create', 'path': [1, 'a'], 'value': 'a'}]
+        assert list(tracker) == [{'action': 'create', 'path': [1, 'a'], 'value': 'a'}]
         del obj[0]
-        assert changes == [{'action': 'create', 'path': [0, 'a'], 'value': 'a'}]
+        assert list(tracker) == [{'action': 'remove', 'path': [0]}]
         a_dict['b'] = 'b'
-        assert changes == [{'action': 'create', 'path': [0, 'a'], 'value': 'a'},
-                           {'action': 'create', 'path': [0, 'b'], 'value': 'b'}]
+        assert list(tracker) == [{'action': 'create', 'path': [1, 'a'], 'value': 'a'},
+                                 {'action': 'create', 'path': [0, 'b'], 'value': 'b'}]
 
 
 """
