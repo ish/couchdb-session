@@ -17,11 +17,39 @@ class TestDictTracking(unittest.TestCase):
         obj['foo'] = 'bar'
         assert list(tracker) == [{'action': 'create', 'path': ['foo'], 'value': 'bar'}]
 
+    def test_add_item_set_same_item(self):
+        tracker = a8n.Tracker()
+        obj = tracker.track({})
+        obj['foo'] = 'oof'
+        obj['foo'] = 'bar'
+        assert list(tracker) == [{'action': 'create', 'path': ['foo'], 'value': 'bar'}]
+
+    def test_add_item_del_same_item(self):
+        tracker = a8n.Tracker()
+        obj = tracker.track({})
+        obj['foo'] = 'oof'
+        del obj['foo']
+        assert list(tracker) == []
+
     def test_change_item(self):
         tracker = a8n.Tracker()
         obj = tracker.track({'foo': 'foo'})
         obj['foo'] = 'bar'
         assert list(tracker) == [{'action': 'edit', 'path': ['foo'], 'value': 'bar'}]
+
+    def test_change_same_item(self):
+        tracker = a8n.Tracker()
+        obj = tracker.track({'foo': 'foo'})
+        obj['foo'] = 'a'
+        obj['foo'] = 'b'
+        assert list(tracker) == [{'action': 'edit', 'path': ['foo'], 'value': 'b'}]
+
+    def test_change_same_del_same_item(self):
+        tracker = a8n.Tracker()
+        obj = tracker.track({'foo': 'foo'})
+        obj['foo'] = 'a'
+        del obj['foo']
+        assert list(tracker) == [{'action': 'remove', 'path': ['foo']}]
 
     def test_del_item(self):
         tracker = a8n.Tracker()
@@ -37,6 +65,22 @@ class TestDictTracking(unittest.TestCase):
         except KeyError:
             pass
         assert list(tracker) == []
+
+    def test_del_item_add_same(self):
+        tracker = a8n.Tracker()
+        obj = tracker.track({'foo': 'foo'})
+        del obj['foo']
+        obj['foo'] = 'bar'
+        assert list(tracker) == [{'action': 'remove', 'path': ['foo']},
+                                 {'action': 'create', 'path': ['foo'], 'value': 'bar'}]
+
+    def test_del_item_add_same_del_same(self):
+        tracker = a8n.Tracker()
+        obj = tracker.track({'foo': 'foo'})
+        del obj['foo']
+        obj['foo'] = 'bar'
+        del obj['foo']
+        assert list(tracker) == [{'action': 'remove', 'path': ['foo']}]
 
 
 class TestListTracking(unittest.TestCase):

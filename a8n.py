@@ -54,6 +54,8 @@ class Recorder(object):
     def __init__(self, tracker, id):
         self._tracker = tracker
         self._id = id
+        self._creates = {}
+        self._edits = {}
 
     @property
     def _path(self):
@@ -63,16 +65,41 @@ class Recorder(object):
         return self._tracker.make_recorder(self._path + [path])
 
     def create(self, path, value):
-        self._tracker.append({'action': 'create',
-                              'path': self._path + [path],
-                              'value': value})
+        action = {'action': 'create',
+                  'path': self._path + [path],
+                  'value': value}
+        self._creates[path] = action
+        self._tracker.append(action)
 
     def edit(self, path, value):
-        self._tracker.append({'action': 'edit',
-                              'path': self._path + [path],
-                              'value': value})
+        # Update a previous 'create' action.
+        create_action = self._creates.get(path)
+        if create_action is not None:
+            create_action['value'] = value
+            return
+        # Update a previous 'edit' action.
+        edit_action = self._edits.get(path)
+        if edit_action is not None:
+            edit_action['value'] = value
+            return
+        # Add a new 'edit' action.
+        action = {'action': 'edit',
+                  'path': self._path + [path],
+                  'value': value}
+        self._edits[path] = action
+        self._tracker.append(action)
 
     def remove(self, path):
+        # Remove a previous 'create' action.
+        create_action = self._creates.pop(path, None)
+        if create_action is not None:
+            self._tracker._changes.remove(create_action)
+            return
+        # Remove a previous 'edit' action and continue.
+        edit_action = self._edits.pop(path, None)
+        if edit_action is not None:
+            self._tracker._changes.remove(edit_action)
+        # Add a new 'delete' action.
         self._tracker.append({'action': 'remove',
                               'path': self._path + [path]})
 
