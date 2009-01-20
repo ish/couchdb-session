@@ -161,9 +161,11 @@ class TestNasty(unittest.TestCase):
         a_dict['a'] = 'a'
         assert list(tracker) == [{'action': 'create', 'path': [1, 'a'], 'value': 'a'}]
         del obj[0]
-        assert list(tracker) == [{'action': 'remove', 'path': [0]}]
+        assert list(tracker) == [{'action': 'create', 'path': [1, 'a'], 'value': 'a'},
+                                 {'action': 'remove', 'path': [0]}]
         a_dict['b'] = 'b'
         assert list(tracker) == [{'action': 'create', 'path': [1, 'a'], 'value': 'a'},
+                                 {'action': 'remove', 'path': [0]},
                                  {'action': 'create', 'path': [0, 'b'], 'value': 'b'}]
 
 

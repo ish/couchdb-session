@@ -3,6 +3,7 @@ Known limitations:
     * Not thread safe.
 """
 
+import itertools
 import UserDict
 from peak.rules import abstract, when
 from peak.util.proxies import ObjectWrapper
@@ -30,28 +31,33 @@ class Tracker(object):
 
     def __init__(self):
         self._changes = []
+        self._recorder_id = itertools.count()
+        self._recorder_paths = {}
 
     def __iter__(self):
         return iter(self._changes)
 
-    def append(self, action):
-        self._changes.append(action)
-
-    def extend(self, actions):
-        self._changes.extend(actions)
-
     def track(self, obj):
         return track(obj, self.make_recorder([]))
 
+    def append(self, change):
+        self._changes.append(change)
+
     def make_recorder(self, path):
-        return Recorder(self, path)
+        id = self._recorder_id.next()
+        self._recorder_paths[id] = path
+        return Recorder(self, id)
 
 
 class Recorder(object):
 
-    def __init__(self, tracker, path):
+    def __init__(self, tracker, id):
         self._tracker = tracker
-        self._path = path
+        self._id = id
+
+    @property
+    def _path(self):
+        return self._tracker._recorder_paths[self._id]
 
     def make_recorder(self, path):
         return self._tracker.make_recorder(self._path + [path])
@@ -69,6 +75,20 @@ class Recorder(object):
     def remove(self, path):
         self._tracker.append({'action': 'remove',
                               'path': self._path + [path]})
+
+    def adjust_child_paths(self, adjuster):
+        # Avoid looking up the path multiple times.
+        my_path = self._path
+        my_path_len = len(self._path)
+        # Loop over all the recorded paths, calling the adjuster for any
+        # immediate children, and updating the paths for the future.
+        for id, path in self._tracker._recorder_paths.iteritems():
+            if not (path[:my_path_len] == my_path and len(path) > my_path_len):
+                continue
+            child_path = path[my_path_len]
+            remaining_path = path[my_path_len+1:]
+            new_path = my_path + [adjuster(path[-1])] + remaining_path
+            self._tracker._recorder_paths[id] = new_path
 
 
 class Dictionary(UserDict.DictMixin, ObjectWrapper):
@@ -123,6 +143,10 @@ class List(ObjectWrapper):
     def __delitem__(self, pos):
         self.__subject__.__delitem__(pos)
         self.__recorder.remove(pos)
+        def adjuster(path):
+            if path > pos:
+                return path-1
+        self.__recorder.adjust_child_paths(adjuster)
 
     def __setslice__(self, *a, **k):
         raise NotImplementedError()
