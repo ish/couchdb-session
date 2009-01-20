@@ -164,11 +164,6 @@ class List(ObjectWrapper):
             self.__recorder.create(pos+i, item)
         return self.__subject__.extend(items)
 
-    def __real_pos(self, pos):
-        if pos < 0:
-            pos = len(self.__subject__)+pos
-        return max(0, min(pos, len(self.__subject__)))
-
     def insert(self, pos, item):
         pos = self.__real_pos(pos)
         self.__recorder.create(pos, item)
@@ -193,4 +188,9 @@ class List(ObjectWrapper):
 
     def sort(self, *a, **k):
         raise NotImplementedError()
+
+    def __real_pos(self, pos):
+        if pos < 0:
+            pos = len(self.__subject__)+pos
+        return max(0, min(pos, len(self.__subject__)))
 
