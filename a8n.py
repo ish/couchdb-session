@@ -12,21 +12,6 @@ from peak.util.proxies import ObjectWrapper
 _SENTINEL = object()
 
 
-@abstract()
-def track(obj, recorder):
-    pass
-
-
-@when(track, (dict,))
-def track_dict(obj, recorder):
-    return Dictionary(obj, recorder)
-
-
-@when(track, (list,))
-def track_list(obj, recorder):
-    return List(obj, recorder)
-
-
 class Tracker(object):
 
     def __init__(self, dirty_callback=None):
@@ -39,14 +24,26 @@ class Tracker(object):
         return iter(self._changes)
 
     def track(self, obj):
-        return track(obj, self.make_recorder([]))
+        return self._track(obj, [])
+
+    @abstract
+    def _track(self, obj, path):
+        pass
+
+    @when(_track, (dict,))
+    def _track_dict(self, obj, path):
+        return Dictionary(obj, self._make_recorder(path))
+
+    @when(_track, (list,))
+    def _track_list(self, obj, path):
+        return List(obj, self._make_recorder(path))
 
     def append(self, change):
         if not self._changes and self._dirty_callback:
             self._dirty_callback()
         self._changes.append(change)
 
-    def make_recorder(self, path):
+    def _make_recorder(self, path):
         id = self._recorder_id.next()
         self._recorder_paths[id] = path
         return Recorder(self, id)
@@ -63,9 +60,6 @@ class Recorder(object):
     @property
     def _path(self):
         return self._tracker._recorder_paths[self._id]
-
-    def make_recorder(self, path):
-        return self._tracker.make_recorder(self._path + [path])
 
     def create(self, path, value):
         action = {'action': 'create',
@@ -111,6 +105,9 @@ class Recorder(object):
                   'was': was}
         self._tracker.append(action)
 
+    def track_child(self, obj, name):
+        return self._tracker._track(obj, self._path+[name])
+
     def adjust_child_paths(self, adjuster):
         # Avoid looking up the path multiple times.
         my_path = self._path
@@ -150,7 +147,7 @@ class Dictionary(UserDict.DictMixin, ObjectWrapper):
         value = self.__subject__.__getitem__(name)
         if name in self.__recorder._creates:
             return value
-        return track(value, self.__recorder.make_recorder(name))
+        return self.__recorder.track_child(value, name)
 
     def __setitem__(self, name, value):
         was = self.__subject__.get(name, _SENTINEL)
@@ -181,7 +178,7 @@ class List(ObjectWrapper):
         value = self.__subject__.__getitem__(pos)
         if pos in self.__recorder._creates:
             return value
-        return track(value, self.__recorder.make_recorder(pos))
+        return self.__recorder.track_child(value, pos)
         
     def __getslice__(self, *a, **k):
         raise NotImplementedError()
