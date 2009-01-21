@@ -71,7 +71,7 @@ class Recorder(object):
         self._creates[path] = action
         self._tracker.append(action)
 
-    def edit(self, path, value):
+    def edit(self, path, value, was):
         self._remove_nested_actions(path)
         # Update a previous 'create' action.
         create_action = self._creates.get(path)
@@ -86,11 +86,12 @@ class Recorder(object):
         # Add a new 'edit' action.
         action = {'action': 'edit',
                   'path': self._path + [path],
-                  'value': value}
+                  'value': value,
+                  'was': was}
         self._edits[path] = action
         self._tracker.append(action)
 
-    def remove(self, path):
+    def remove(self, path, was):
         self._remove_nested_actions(path)
         # Remove a previous 'create' action.
         create_action = self._creates.pop(path, None)
@@ -102,8 +103,10 @@ class Recorder(object):
         if edit_action is not None:
             self._tracker._changes.remove(edit_action)
         # Add a new 'delete' action.
-        self._tracker.append({'action': 'remove',
-                              'path': self._path + [path]})
+        action = {'action': 'remove',
+                  'path': self._path + [path],
+                  'was': was}
+        self._tracker.append(action)
 
     def adjust_child_paths(self, adjuster):
         # Avoid looking up the path multiple times.
@@ -147,15 +150,17 @@ class Dictionary(UserDict.DictMixin, ObjectWrapper):
         return track(value, self.__recorder.make_recorder(name))
 
     def __setitem__(self, name, value):
-        if self.__subject__.get(name, _SENTINEL) is _SENTINEL:
+        was = self.__subject__.get(name, _SENTINEL)
+        if was is _SENTINEL:
             self.__recorder.create(name, value)
         else:
-            self.__recorder.edit(name, value)
+            self.__recorder.edit(name, value, was)
         return self.__subject__.__setitem__(name, value)
 
     def __delitem__(self, name):
+        was = self.__subject__[name]
         self.__subject__.__delitem__(name)
-        self.__recorder.remove(name)
+        self.__recorder.remove(name, was)
 
     def keys(self):
         return self.__subject__.keys()
@@ -179,12 +184,14 @@ class List(ObjectWrapper):
         raise NotImplementedError()
         
     def __setitem__(self, pos, item):
+        was = self.__subject__[pos]
         self.__subject__.__setitem__(pos, item)
-        self.__recorder.edit(pos, item)
+        self.__recorder.edit(pos, item, was)
 
     def __delitem__(self, pos):
+        was = self.__subject__[pos]
         self.__subject__.__delitem__(pos)
-        self.__recorder.remove(pos)
+        self.__recorder.remove(pos, was)
         self.__recorder.adjust_child_paths(_make_list_adjuster(-1, pos))
 
     def __setslice__(self, *a, **k):
@@ -215,13 +222,13 @@ class List(ObjectWrapper):
             item = self.__subject__.pop(pos)
         except IndexError:
             raise
-        self.__recorder.remove(pos)
+        self.__recorder.remove(pos, item)
         self.__recorder.adjust_child_paths(_make_list_adjuster(-1, pos+1))
         return item
 
     def remove(self, item):
         pos = self.index(item)
-        self.__recorder.remove(pos)
+        self.__recorder.remove(pos, item)
         self.__recorder.adjust_child_paths(_make_list_adjuster(-1, pos+1))
         return self.__subject__.remove(item)
 
