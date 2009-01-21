@@ -100,6 +100,13 @@ class TestListTracking(unittest.TestCase):
             pass
         assert list(tracker) == []
 
+    def test_setitem_twice(self):
+        tracker = a8n.Tracker()
+        obj = tracker.track(['foo'])
+        obj[0] = 'bar'
+        obj[0] = 'oof'
+        assert list(tracker) == [{'action': 'edit', 'path': [0], 'value': 'oof'}]
+
     def test_delitem(self):
         tracker = a8n.Tracker()
         obj = tracker.track(['foo'])
@@ -115,11 +122,25 @@ class TestListTracking(unittest.TestCase):
             pass
         assert list(tracker) == []
 
+    def test_set_then_delete(self):
+        tracker = a8n.Tracker()
+        obj = tracker.track(['foo'])
+        obj[0] = 'bar'
+        del obj[0]
+        assert list(tracker) == [{'action': 'remove', 'path': [0]}]
+
     def test_append(self):
         tracker = a8n.Tracker()
         obj = tracker.track([])
         obj.append('foo')
         assert list(tracker) == [{'action': 'create', 'path': [0], 'value': 'foo'}]
+
+    def test_append_then_delete(self):
+        tracker = a8n.Tracker()
+        obj = tracker.track([])
+        obj.append('foo')
+        del obj[0]
+        assert list(tracker) == []
 
     def test_extend(self):
         tracker = a8n.Tracker()
@@ -172,6 +193,13 @@ class TestListTracking(unittest.TestCase):
             obj.remove(10)
         except ValueError:
             pass
+        assert list(tracker) == []
+
+    def test_add_then_remove(self):
+        tracker = a8n.Tracker()
+        obj = tracker.track([1, 2, 3])
+        obj.append(4)
+        obj.remove(4)
         assert list(tracker) == []
 
 
