@@ -131,6 +131,8 @@ class Dictionary(UserDict.DictMixin, ObjectWrapper):
 
     def __getitem__(self, name):
         value = self.__subject__.__getitem__(name)
+        if name in self.__recorder._creates:
+            return value
         return track(value, self.__recorder.make_recorder(name))
 
     def __setitem__(self, name, value):
@@ -158,6 +160,8 @@ class List(ObjectWrapper):
 
     def __getitem__(self, pos):
         value = self.__subject__.__getitem__(pos)
+        if pos in self.__recorder._creates:
+            return value
         return track(value, self.__recorder.make_recorder(pos))
         
     def __getslice__(self, *a, **k):

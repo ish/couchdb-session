@@ -274,6 +274,23 @@ class TestChangingPaths(unittest.TestCase):
                                  {'action': 'edit', 'path': [0, 'b'], 'value': 'b'}]
 
 
+class TestUntracked(unittest.TestCase):
+
+    def test_untracked_in_dict(self):
+        tracker = a8n.Tracker()
+        obj = tracker.track({})
+        obj['untracked'] = {}
+        obj['untracked']['foo'] = 'bar'
+        assert list(tracker) == [{'action': 'create', 'path': ['untracked'], 'value': {'foo': 'bar'}}]
+
+    def test_untracked_in_list(self):
+        tracker = a8n.Tracker()
+        obj = tracker.track([])
+        obj.append({})
+        obj[0]['foo'] = 'bar'
+        assert list(tracker) == [{'action': 'create', 'path': [0], 'value': {'foo': 'bar'}}]
+
+
 """
 class _TestChangeTracking(unittest.TestCase):
 
