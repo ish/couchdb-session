@@ -9,6 +9,17 @@ TODO:
 """
 
 
+class TestTracker(unittest.TestCase):
+
+    def test_dirty_callback(self):
+        state = []
+        def callback():
+            state.append(None)
+        tracker = a8n.Tracker(callback)
+        tracker.track({})['foo'] ='bar'
+        assert state
+
+
 class TestDictTracking(unittest.TestCase):
 
     def test_add_item(self):

@@ -29,7 +29,8 @@ def track_list(obj, recorder):
 
 class Tracker(object):
 
-    def __init__(self):
+    def __init__(self, dirty_callback=None):
+        self._dirty_callback = dirty_callback
         self._changes = []
         self._recorder_id = itertools.count()
         self._recorder_paths = {}
@@ -41,6 +42,8 @@ class Tracker(object):
         return track(obj, self.make_recorder([]))
 
     def append(self, change):
+        if not self._changes and self._dirty_callback:
+            self._dirty_callback()
         self._changes.append(change)
 
     def make_recorder(self, path):
