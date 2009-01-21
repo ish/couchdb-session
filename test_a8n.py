@@ -82,6 +82,30 @@ class TestDictTracking(unittest.TestCase):
         del obj['foo']
         assert list(tracker) == [{'action': 'remove', 'path': ['foo']}]
 
+    def test_replace_nested_with_actions(sel):
+        tracker = a8n.Tracker()
+        obj = tracker.track({'nested': {'a': 0, 'c': 2}})
+        obj['nested']['a'] = 1
+        obj['nested']['b'] = 2
+        del obj['nested']['c']
+        assert list(tracker) == [{'action': 'edit', 'path': ['nested', 'a'], 'value': 1},
+                                 {'action': 'create', 'path': ['nested', 'b'], 'value': 2},
+                                 {'action': 'remove', 'path': ['nested', 'c']}]
+        obj['nested'] = {}
+        assert list(tracker) == [{'action': 'edit', 'path': ['nested'], 'value': {}}]
+
+    def test_remove_nested_with_actions(sel):
+        tracker = a8n.Tracker()
+        obj = tracker.track({'nested': {'a': 0, 'c': 2}})
+        obj['nested']['a'] = 1
+        obj['nested']['b'] = 2
+        del obj['nested']['c']
+        assert list(tracker) == [{'action': 'edit', 'path': ['nested', 'a'], 'value': 1},
+                                 {'action': 'create', 'path': ['nested', 'b'], 'value': 2},
+                                 {'action': 'remove', 'path': ['nested', 'c']}]
+        del obj['nested']
+        assert list(tracker) == [{'action': 'remove', 'path': ['nested']}]
+
 
 class TestListTracking(unittest.TestCase):
 
@@ -201,6 +225,30 @@ class TestListTracking(unittest.TestCase):
         obj.append(4)
         obj.remove(4)
         assert list(tracker) == []
+
+    def test_replace_nested_with_actions(sel):
+        tracker = a8n.Tracker()
+        obj = tracker.track([{'a': 0, 'c': 2}])
+        obj[0]['a'] = 1
+        obj[0]['b'] = 2
+        del obj[0]['c']
+        assert list(tracker) == [{'action': 'edit', 'path': [0, 'a'], 'value': 1},
+                                 {'action': 'create', 'path': [0, 'b'], 'value': 2},
+                                 {'action': 'remove', 'path': [0, 'c']}]
+        obj[0] = {}
+        assert list(tracker) == [{'action': 'edit', 'path': [0], 'value': {}}]
+
+    def test_remove_nested_with_actions(sel):
+        tracker = a8n.Tracker()
+        obj = tracker.track([{'a': 0, 'c': 2}])
+        obj[0]['a'] = 1
+        obj[0]['b'] = 2
+        del obj[0]['c']
+        assert list(tracker) == [{'action': 'edit', 'path': [0, 'a'], 'value': 1},
+                                 {'action': 'create', 'path': [0, 'b'], 'value': 2},
+                                 {'action': 'remove', 'path': [0, 'c']}]
+        del obj[0]
+        assert list(tracker) == [{'action': 'remove', 'path': [0]}]
 
 
 class TestNested(unittest.TestCase):

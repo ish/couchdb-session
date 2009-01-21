@@ -72,6 +72,7 @@ class Recorder(object):
         self._tracker.append(action)
 
     def edit(self, path, value):
+        self._remove_nested_actions(path)
         # Update a previous 'create' action.
         create_action = self._creates.get(path)
         if create_action is not None:
@@ -90,6 +91,7 @@ class Recorder(object):
         self._tracker.append(action)
 
     def remove(self, path):
+        self._remove_nested_actions(path)
         # Remove a previous 'create' action.
         create_action = self._creates.pop(path, None)
         if create_action is not None:
@@ -116,6 +118,15 @@ class Recorder(object):
             remaining_path = path[my_path_len+1:]
             new_path = my_path + [adjuster(path[-1])] + remaining_path
             self._tracker._recorder_paths[id] = new_path
+
+    def _remove_nested_actions(self, path):
+        full_path = self._path + [path]
+        full_path_len = len(full_path)
+        to_delete = (i for (i,change) in enumerate(self._tracker._changes)
+                     if change['path'][:full_path_len] == full_path and 
+                         len(change['path']) > full_path_len)
+        for i in sorted(to_delete, reverse=True):
+            del self._tracker._changes[i]
 
 
 class Dictionary(UserDict.DictMixin, ObjectWrapper):
