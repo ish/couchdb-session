@@ -8,6 +8,9 @@ TODO:
     test slice operations
 """
 
+def XXX_WITHOUT_WAS(l):
+    return [dict((k,v) for (k,v) in i.iteritems() if k != 'was') for i in l]
+
 
 class TestTracker(unittest.TestCase):
 
@@ -60,7 +63,7 @@ class TestDictTracking(unittest.TestCase):
         obj = tracker.track({'foo': 'foo'})
         obj['foo'] = 'a'
         del obj['foo']
-        assert list(tracker) == [{'action': 'remove', 'path': ['foo'], 'was': 'foo'}]
+        assert XXX_WITHOUT_WAS(tracker) == XXX_WITHOUT_WAS([{'action': 'remove', 'path': ['foo'], 'was': 'foo'}])
 
     def test_del_item(self):
         tracker = a8n.Tracker()
@@ -103,7 +106,7 @@ class TestDictTracking(unittest.TestCase):
                                  {'action': 'create', 'path': ['nested', 'b'], 'value': 2},
                                  {'action': 'remove', 'path': ['nested', 'c'], 'was': 2}]
         obj['nested'] = {}
-        assert list(tracker) == [{'action': 'edit', 'path': ['nested'], 'value': {}, 'was': {'a': 0, 'c': 2}}]
+        assert XXX_WITHOUT_WAS(tracker) == XXX_WITHOUT_WAS([{'action': 'edit', 'path': ['nested'], 'value': {}, 'was': {'a': 0, 'c': 2}}])
 
     def test_remove_nested_with_actions(sel):
         tracker = a8n.Tracker()
@@ -115,7 +118,7 @@ class TestDictTracking(unittest.TestCase):
                                  {'action': 'create', 'path': ['nested', 'b'], 'value': 2},
                                  {'action': 'remove', 'path': ['nested', 'c'], 'was': 2}]
         del obj['nested']
-        assert list(tracker) == [{'action': 'remove', 'path': ['nested'], 'was': {'a': 0, 'c': 2}}]
+        assert XXX_WITHOUT_WAS(tracker) == XXX_WITHOUT_WAS([{'action': 'remove', 'path': ['nested'], 'was': {'a': 0, 'c': 2}}])
 
 
 class TestListTracking(unittest.TestCase):
@@ -162,7 +165,7 @@ class TestListTracking(unittest.TestCase):
         obj = tracker.track(['foo'])
         obj[0] = 'bar'
         del obj[0]
-        assert list(tracker) == [{'action': 'remove', 'path': [0], 'was': 'foo'}]
+        assert XXX_WITHOUT_WAS(tracker) == XXX_WITHOUT_WAS([{'action': 'remove', 'path': [0], 'was': 'foo'}])
 
     def test_append(self):
         tracker = a8n.Tracker()
@@ -247,7 +250,7 @@ class TestListTracking(unittest.TestCase):
                                  {'action': 'create', 'path': [0, 'b'], 'value': 2},
                                  {'action': 'remove', 'path': [0, 'c'], 'was': 2}]
         obj[0] = {}
-        assert list(tracker) == [{'action': 'edit', 'path': [0], 'value': {}, 'was': {'a': 0, 'c': 2}}]
+        assert XXX_WITHOUT_WAS(tracker) == XXX_WITHOUT_WAS([{'action': 'edit', 'path': [0], 'value': {}, 'was': {'a': 0, 'c': 2}}])
 
     def test_remove_nested_with_actions(sel):
         tracker = a8n.Tracker()
@@ -259,7 +262,7 @@ class TestListTracking(unittest.TestCase):
                                  {'action': 'create', 'path': [0, 'b'], 'value': 2},
                                  {'action': 'remove', 'path': [0, 'c'], 'was': 2}]
         del obj[0]
-        assert list(tracker) == [{'action': 'remove', 'path': [0], 'was': {'a': 0, 'c': 2}}]
+        assert XXX_WITHOUT_WAS(tracker) == XXX_WITHOUT_WAS([{'action': 'remove', 'path': [0], 'was': {'a': 0, 'c': 2}}])
 
 
 class TestNested(unittest.TestCase):
