@@ -7,6 +7,7 @@ import itertools
 import UserDict
 from peak.rules import abstract, when
 from peak.util.proxies import ObjectWrapper
+import couchdb
 
 
 _SENTINEL = object()
@@ -29,6 +30,10 @@ class Tracker(object):
     @abstract
     def _track(self, obj, path):
         pass
+
+    @when(_track, (couchdb.Document,))
+    def _track_dict(self, obj, path):
+        return Document(obj, self._make_recorder(path))
 
     @when(_track, (dict,))
     def _track_dict(self, obj, path):
@@ -138,6 +143,7 @@ class Dictionary(UserDict.DictMixin, ObjectWrapper):
     #   __contains__(), __iter__(), and iteritems() to improve performance
 
     __recorder = None
+    _private = []
 
     def __init__(self, subject, recorder):
         super(Dictionary, self).__init__(subject)
@@ -150,11 +156,12 @@ class Dictionary(UserDict.DictMixin, ObjectWrapper):
         return self.__recorder.track_child(value, name)
 
     def __setitem__(self, name, value):
-        was = self.__subject__.get(name, _SENTINEL)
-        if was is _SENTINEL:
-            self.__recorder.create(name, value)
-        else:
-            self.__recorder.edit(name, value, was)
+        if name not in self._private:
+            was = self.__subject__.get(name, _SENTINEL)
+            if was is _SENTINEL:
+                self.__recorder.create(name, value)
+            else:
+                self.__recorder.edit(name, value, was)
         return self.__subject__.__setitem__(name, value)
 
     def __delitem__(self, name):
@@ -164,6 +171,10 @@ class Dictionary(UserDict.DictMixin, ObjectWrapper):
 
     def keys(self):
         return self.__subject__.keys()
+
+
+class Document(Dictionary):
+    _private = ['_id', '_rev', '_attachments']
 
 
 class List(ObjectWrapper):
