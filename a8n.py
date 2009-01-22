@@ -20,6 +20,13 @@ class Tracker(object):
         self._changes = []
         self._recorder_id = itertools.count()
         self._recorder_paths = {}
+        self._recorder_creates = {}
+        self._recorder_edits = {}
+
+    def clear(self):
+        self._changes = []
+        self._recorder_creates = {}
+        self._recorder_edits = {}
 
     def __iter__(self):
         return iter(self._changes)
@@ -59,8 +66,14 @@ class Recorder(object):
     def __init__(self, tracker, id):
         self._tracker = tracker
         self._id = id
-        self._creates = {}
-        self._edits = {}
+
+    @property
+    def _creates(self):
+        return self._tracker._recorder_creates.setdefault(self._id, {})
+
+    @property
+    def _edits(self):
+        return self._tracker._recorder_edits.setdefault(self._id, {})
 
     @property
     def _path(self):
