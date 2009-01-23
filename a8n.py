@@ -6,7 +6,6 @@ Known limitations:
 import itertools
 import UserDict
 from peak.rules import abstract, when
-from peak.util.proxies import ObjectWrapper
 import couchdb
 
 
@@ -158,7 +157,7 @@ class Recorder(object):
             del self._tracker._changes[i]
 
 
-class Dictionary(UserDict.DictMixin, ObjectWrapper):
+class Dictionary(UserDict.DictMixin, dict):
 
     # TODO:
     #   __contains__(), __iter__(), and iteritems() to improve performance
@@ -171,34 +170,34 @@ class Dictionary(UserDict.DictMixin, ObjectWrapper):
         self.__recorder = recorder
 
     def __getitem__(self, name):
-        value = self.__subject__.__getitem__(name)
+        value = super(Dictionary, self).__getitem__(name)
         if name in self.__recorder._creates:
             return value
         return self.__recorder.track_child(value, name)
 
     def __setitem__(self, name, value):
         if name not in self._private:
-            was = self.__subject__.get(name, _SENTINEL)
+            was = super(Dictionary, self).get(name, _SENTINEL)
             if was is _SENTINEL:
                 self.__recorder.create(name, value)
             else:
                 self.__recorder.edit(name, value, was)
-        return self.__subject__.__setitem__(name, value)
+        return super(Dictionary, self).__setitem__(name, value)
 
     def __delitem__(self, name):
-        was = self.__subject__[name]
-        self.__subject__.__delitem__(name)
+        was = super(Dictionary, self).__getitem__(name)
+        super(Dictionary, self).__delitem__(name)
         self.__recorder.remove(name, was)
 
     def keys(self):
-        return self.__subject__.keys()
+        return super(Dictionary, self).keys()
 
 
 class Document(Dictionary):
     _private = ['_id', '_rev', '_attachments']
 
 
-class List(ObjectWrapper):
+class List(list):
 
     __recorder = None
 
@@ -207,7 +206,7 @@ class List(ObjectWrapper):
         self.__recorder = recorder
 
     def __getitem__(self, pos):
-        value = self.__subject__.__getitem__(pos)
+        value = super(List, self).__getitem__(pos)
         if pos in self.__recorder._creates:
             return value
         return self.__recorder.track_child(value, pos)
@@ -216,13 +215,13 @@ class List(ObjectWrapper):
         raise NotImplementedError()
         
     def __setitem__(self, pos, item):
-        was = self.__subject__[pos]
-        self.__subject__.__setitem__(pos, item)
+        was = super(List, self).__getitem__(pos)
+        super(List, self).__setitem__(pos, item)
         self.__recorder.edit(pos, item, was)
 
     def __delitem__(self, pos):
-        was = self.__subject__[pos]
-        self.__subject__.__delitem__(pos)
+        was = super(List, self).__getitem__(pos)
+        super(List, self).__delitem__(pos)
         self.__recorder.remove(pos, was)
         self.__recorder.adjust_child_paths(_make_list_adjuster(-1, pos))
 
@@ -233,25 +232,25 @@ class List(ObjectWrapper):
         raise NotImplementedError()
 
     def append(self, item):
-        self.__recorder.create(len(self.__subject__), item)
-        return self.__subject__.append(item)
+        self.__recorder.create(len(self), item)
+        return super(List, self).append(item)
 
     def extend(self, items):
-        pos = len(self.__subject__)
+        pos = len(self)
         for i, item in enumerate(items):
             self.__recorder.create(pos+i, item)
-        return self.__subject__.extend(items)
+        return super(List, self).extend(items)
 
     def insert(self, pos, item):
         pos = self.__real_pos(pos)
         self.__recorder.adjust_child_paths(_make_list_adjuster(+1, pos))
         self.__recorder.create(pos, item)
-        return self.__subject__.insert(pos, item)
+        return super(List, self).insert(pos, item)
 
     def pop(self, pos=-1):
         pos = self.__real_pos(pos)
         try:
-            item = self.__subject__.pop(pos)
+            item = super(List, self).pop(pos)
         except IndexError:
             raise
         self.__recorder.remove(pos, item)
@@ -262,7 +261,7 @@ class List(ObjectWrapper):
         pos = self.index(item)
         self.__recorder.remove(pos, item)
         self.__recorder.adjust_child_paths(_make_list_adjuster(-1, pos+1))
-        return self.__subject__.remove(item)
+        return super(List, self).remove(item)
 
     def reverse(self, *a, **k):
         raise NotImplementedError()
@@ -272,8 +271,8 @@ class List(ObjectWrapper):
 
     def __real_pos(self, pos):
         if pos < 0:
-            pos = len(self.__subject__)+pos
-        return max(0, min(pos, len(self.__subject__)))
+            pos = len(self)+pos
+        return max(0, min(pos, len(self)))
 
 
 def _make_list_adjuster(adjustment, start, end=None):
