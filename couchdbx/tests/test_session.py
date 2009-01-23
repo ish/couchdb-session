@@ -261,10 +261,8 @@ class TestPreFlushHook(unittest.TestCase):
     server_url = 'http://localhost:5984/'
 
     def setUp(self):
-        #self.db_name = 'test_'+str(uuid.uuid4())
-        self.db_name = 'test'
+        self.db_name = 'test_'+str(uuid.uuid4())
         self.server = couchdb.Server(self.server_url)
-        del self.server[self.db_name]
         self.db = self.server.create(self.db_name)
         self.session = session.Session(self.db, self._pre_flush_hook)
         self.db.update([
@@ -283,8 +281,7 @@ class TestPreFlushHook(unittest.TestCase):
             ])
 
     def tearDown(self):
-        #del self.server[self.db_name]
-        pass
+        del self.server[self.db_name]
 
     def test_(self):
         tag = get_one(self.session, 'test/tag_by_name', 'foo')
