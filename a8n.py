@@ -39,7 +39,7 @@ class Tracker(object):
         pass
 
     @when(_track, (couchdb.Document,))
-    def _track_dict(self, obj, path):
+    def _track_doc(self, obj, path):
         return Document(obj, self._make_recorder(path))
 
     @when(_track, (dict,))
