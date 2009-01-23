@@ -51,8 +51,17 @@ class TestView(BaseTestCase):
         view = self.session.view('_all_docs')
         assert len(view) == 10
 
-    def test_view_getitem(self):
+    def test_view_results(self):
         assert isinstance(self.session.view('_all_docs'), session.SessionViewResults)
+
+
+class TestViewResults(BaseTestCase):
+
+    def test_iter(self):
+        assert isinstance(iter(self.session.view('_all_docs')).next(), session.SessionRow)
+
+    def test_rows(self):
+        assert isinstance(self.session.view('_all_docs').rows[0], session.SessionRow)
 
 
 class TestCaching(BaseTestCase):
@@ -75,6 +84,11 @@ class TestCaching(BaseTestCase):
         row2 = iter(self.session.view('_all_docs', include_docs=True)).next()
         assert row1.doc is row2.doc is not None
         assert row1.doc is self.session[row1.doc['_id']]
+
+    def test_view_rows(self):
+        rows1 = self.session.view('_all_docs', include_docs=True).rows
+        rows2 = self.session.view('_all_docs', include_docs=True).rows
+        assert rows1[0].doc is rows2[0].doc
 
     def test_query(self):
         map_fun = "function(doc) {emit(null, null);}"

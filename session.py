@@ -160,6 +160,10 @@ class SessionViewResults(object):
         for row in self._view_results:
             yield SessionRow(self._session, row)
 
+    @property
+    def rows(self):
+        return [SessionRow(self._session, row) for row in self._view_results.rows]
+
 
 class SessionRow(object):
 
@@ -170,12 +174,12 @@ class SessionRow(object):
     def __getattr__(self, name):
         return getattr(self._row, name)
 
-    def _get_doc(self):
+    @property
+    def doc(self):
         doc = self._row.doc
         if doc is not None:
             cached = self._session._cache.get(doc['_id'])
             if cached is not None:
                 return cached
             return self._session._cached(doc)
-    doc = property(_get_doc)
 
