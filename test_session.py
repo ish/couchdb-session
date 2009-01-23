@@ -256,6 +256,66 @@ class TestCombinations(BaseTestCase):
         assert self.db.get(doc_id)['foo'] == 'wibble'
 
 
+class TestPreFlushHook(unittest.TestCase):
+
+    server_url = 'http://localhost:5984/'
+
+    def setUp(self):
+        #self.db_name = 'test_'+str(uuid.uuid4())
+        self.db_name = 'test'
+        self.server = couchdb.Server(self.server_url)
+        del self.server[self.db_name]
+        self.db = self.server.create(self.db_name)
+        self.session = session.Session(self.db, self._pre_flush_hook)
+        self.db.update([
+            {'type': 'tag', 'name': 'foo'},
+            {'type': 'tag', 'name': 'bar'},
+            {'type': 'post', 'title': 'Post #1', 'tag': 'foo'},
+            {'type': 'post', 'title': 'Post #2', 'tag': 'bar'},
+            {'_id': '_design/test', 'views': {
+                'tag_by_name': {
+                    'map': """function(doc) {if(doc.type=='tag') {emit(doc.name, null);}}""",
+                    },
+                'post_by_tag': {
+                    'map': """function(doc) {if(doc.type=='post') {emit(doc.tag, null);}}""",
+                    }
+                }},
+            ])
+
+    def tearDown(self):
+        #del self.server[self.db_name]
+        pass
+
+    def test_(self):
+        tag = get_one(self.session, 'test/tag_by_name', 'foo')
+        tag['name'] = 'oof'
+        self.session.flush()
+        assert len(get_many(self.session, 'test/post_by_tag', 'foo')) == 0
+        assert len(get_many(self.session, 'test/post_by_tag', 'oof')) == 1
+        assert len(get_many(self.session, 'test/post_by_tag', 'bar')) == 1
+
+    def _pre_flush_hook(self, session, deletions, additions, changes):
+        for doc, actions in changes:
+            if doc['type'] != 'tag':
+                continue
+            for action in actions:
+                if action['action'] == 'edit' and action['path'] == ['name']:
+                    for post in get_many(session, 'test/post_by_tag', action['was']):
+                        post['tag'] = action['value']
+
+
+def get_one(session, view, key):
+    rows = session.view(view, startkey=key, endkey=key, include_docs=True, limit=2).rows
+    if len(rows) != 1:
+        raise Exception('get_one')
+    return rows[0].doc
+
+
+def get_many(session, view, key):
+    rows = session.view(view, startkey=key, endkey=key, include_docs=True).rows
+    return [row.doc for row in rows]
+
+
 if __name__ == '__main__':
     unittest.main()
 

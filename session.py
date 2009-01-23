@@ -8,13 +8,14 @@ import a8n
 
 class Session(object):
 
-    def __init__(self, db):
+    def __init__(self, db, pre_flush_hook=None):
         self._db = db
-        self._tracker = {}
+        self._trackers = {}
         self._cache = {}
         self._created = set()
         self._changed = set()
         self._deleted = {}
+        self._pre_flush_hook = pre_flush_hook
 
     #- Additional magic methods.
 
@@ -105,7 +106,45 @@ class Session(object):
 
     #- Additional methods.
 
+    def pre_flush_hook(self, deletions, additions, changes):
+        if self._pre_flush_hook is not None:
+            self._pre_flush_hook(self, deletions, additions, changes)
+
+    def _freeze(self):
+        deleted, self._deleted = self._deleted, {}
+        created, self._created = self._created, set()
+        changed, self._changed = self._changed, set()
+        return deleted, created, changed
+
+    def _pre_flush(self):
+
+        all_deleted = {}
+        all_created = set()
+        all_changed = set()
+
+        while True:
+            deleted, created, changed = self._freeze()
+            if not (deleted or created or changed):
+                break
+            all_deleted.update(deleted)
+            all_created.update(created)
+            all_changed.update(changed)
+            def gen_deletions():
+                return (self._cache[doc_id] for doc_id in deleted.iteritems())
+            def gen_additions():
+                return (self._cache[doc_id] for doc_id in created)
+            def gen_changes():
+                changes = (self._cache[doc_id] for doc_id in changed)
+                changes = ((doc, iter(self._trackers[doc['_id']])) for doc in changes)
+                return changes
+            self.pre_flush_hook(gen_deletions(), gen_additions(), gen_changes())
+
+        return all_deleted, all_created, all_changed
+
     def flush(self):
+
+        deleted, created, changed = self._pre_flush()
+
         # XXX Due to a bug in CouchDB (see issue COUCHDB-188) we can't do
         # deletions at the same time as additions if the list of updates
         # includes a delete and create for the same id. For now, let's keep
@@ -113,22 +152,26 @@ class Session(object):
         # backend.
         # XXX We can't pass a generator to couchdb's Database.update.
         # XXX We can only pass dict instances in the list to couchdb's Database.update.
+
         # Build a list of deletions.
-        deletions = [{'_id': id, '_rev': rev, '_deleted': True}
-                     for (id, rev) in self._deleted.iteritems()]
+        deletions = ({'_id': id, '_rev': rev, '_deleted': True}
+                     for (id, rev) in deleted.iteritems())
+
         # Build a list of other updates.
-        additions = (dict(self._cache[doc_id]) for doc_id in self._created)
-        changes = (dict(self._cache[doc_id]) for doc_id in self._changed)
-        updates = list(itertools.chain(additions, changes))
+        additions = (dict(self._cache[doc_id]) for doc_id in created)
+        changes = (dict(self._cache[doc_id]) for doc_id in changed)
+        updates = itertools.chain(additions, changes)
+
         # Send deletions and clean up cache.
-        self._db.update(deletions)
+        self._db.update(list(deletions))
         self._deleted.clear()
+
         # Perform updates and fix up the cache with the new _revs.
-        for response in self._db.update(updates):
+        for response in self._db.update(list(updates)):
             self._cache[response['_id']]['_rev'] = response['_rev']
         self._created.clear()
         self._changed.clear()
-        for tracker in self._tracker.itervalues():
+        for tracker in self._trackers.itervalues():
             tracker.clear()
 
     def _cached(self, doc):
@@ -136,7 +179,7 @@ class Session(object):
             self._changed.add(doc['_id'])
         tracker = a8n.Tracker(callback)
         doc = tracker.track(doc)
-        self._tracker[doc['_id']] = tracker
+        self._trackers[doc['_id']] = tracker
         self._cache[doc['_id']] = doc
         return doc
 
