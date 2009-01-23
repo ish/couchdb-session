@@ -1,4 +1,5 @@
 import unittest
+import simplejson
 
 from couchdbx import a8n
 
@@ -351,6 +352,19 @@ class TestUntracked(unittest.TestCase):
         obj.append({})
         obj[0]['foo'] = 'bar'
         assert list(tracker) == [{'action': 'create', 'path': [0], 'value': {'foo': 'bar'}}]
+
+
+class TestEncode(unittest.TestCase):
+
+    def test_dict(self):
+        tracker = a8n.Tracker()
+        obj = tracker.track({})
+        assert simplejson.dumps(obj) == "{}"
+
+    def test_list(self):
+        tracker = a8n.Tracker()
+        obj = tracker.track([])
+        assert simplejson.dumps(obj) == "[]"
 
 
 if __name__ == '__main__':
