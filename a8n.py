@@ -38,6 +38,14 @@ class Tracker(object):
     def _track(self, obj, path):
         pass
 
+    @when(_track, (bool,))
+    @when(_track, (float,))
+    @when(_track, (int,))
+    @when(_track, (str,))
+    @when(_track, (unicode,))
+    def _track_immutable(self, obj, path):
+        return obj
+
     @when(_track, (couchdb.Document,))
     def _track_doc(self, obj, path):
         return Document(obj, self._make_recorder(path))
