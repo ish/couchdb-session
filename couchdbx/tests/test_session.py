@@ -1,8 +1,8 @@
 import unittest
 import uuid
-
 import couchdb
-import session
+
+from couchdbx import session
 
 
 class BaseTestCase(unittest.TestCase):

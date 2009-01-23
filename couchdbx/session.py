@@ -3,7 +3,7 @@ import itertools
 import uuid
 import couchdb
 
-import a8n
+from couchdbx import a8n
 
 
 class Session(object):
