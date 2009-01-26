@@ -84,7 +84,7 @@ class Session(object):
         doc = self._db.get(id, default, **options)
         if doc is default:
             return doc
-        return self._cached(doc)
+        return self._tracked_and_cached(doc)
 
     def delete_attachment(self, doc, filename):
         raise NotImplementedError()
@@ -161,7 +161,7 @@ class Session(object):
         # tracking proxies.
         # XXX It might be nicer if the cache only ever contains the real
         # document to avoid having to know about the __subject__ stuff.
-        additions = (self._cache[doc_id].__subject__ for doc_id in created)
+        additions = (self._cache[doc_id] for doc_id in created)
         changes = (self._cache[doc_id].__subject__ for doc_id in changed)
         updates = itertools.chain(additions, changes)
 
@@ -177,12 +177,15 @@ class Session(object):
         for tracker in self._trackers.itervalues():
             tracker.clear()
 
-    def _cached(self, doc):
+    def _tracked_and_cached(self, doc):
         def callback():
             self._changed.add(doc['_id'])
         tracker = a8n.Tracker(callback)
         doc = tracker.track(doc)
         self._trackers[doc['_id']] = tracker
+        return self._cached(doc)
+
+    def _cached(self, doc):
         self._cache[doc['_id']] = doc
         return doc
 
@@ -227,5 +230,5 @@ class SessionRow(object):
             cached = self._session._cache.get(doc['_id'])
             if cached is not None:
                 return cached
-            return self._session._cached(doc)
+            return self._session._tracked_and_cached(doc)
 
