@@ -151,7 +151,6 @@ class Session(object):
         # deletions out of the general updates list and make two calls to the
         # backend.
         # XXX We can't pass a generator to couchdb's Database.update.
-        # XXX We can only pass dict instances in the list to couchdb's Database.update.
 
         # Build a list of deletions.
         deletions = ({'_id': id, '_rev': rev, '_deleted': True}
@@ -162,8 +161,8 @@ class Session(object):
         # tracking proxies.
         # XXX It might be nicer if the cache only ever contains the real
         # document to avoid having to know about the __subject__ stuff.
-        additions = (dict(self._cache[doc_id]) for doc_id in created)
-        changes = (dict(self._cache[doc_id].__subject__) for doc_id in changed)
+        additions = (self._cache[doc_id].__subject__ for doc_id in created)
+        changes = (self._cache[doc_id].__subject__ for doc_id in changed)
         updates = itertools.chain(additions, changes)
 
         # Send deletions and clean up cache.
