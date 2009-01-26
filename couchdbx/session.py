@@ -166,12 +166,16 @@ class Session(object):
         updates = itertools.chain(additions, changes)
 
         # Send deletions and clean up cache.
-        self._db.update(list(deletions))
-        self._deleted.clear()
+        if deleted:
+            self._db.update(list(deletions))
+            self._deleted.clear()
 
         # Perform updates and fix up the cache with the new _revs.
-        for response in self._db.update(list(updates)):
-            self._cache[response['_id']]['_rev'] = response['_rev']
+        if created or changed:
+            for response in self._db.update(list(updates)):
+                self._cache[response['_id']]['_rev'] = response['_rev']
+
+        # Clear dirty state in case the session gets reused.
         self._created.clear()
         self._changed.clear()
         for tracker in self._trackers.itervalues():
