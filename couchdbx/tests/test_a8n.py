@@ -354,19 +354,6 @@ class TestUntracked(unittest.TestCase):
         assert list(tracker) == [{'action': 'create', 'path': [0], 'value': {'foo': 'bar'}}]
 
 
-class TestEncode(unittest.TestCase):
-
-    def test_dict(self):
-        tracker = a8n.Tracker()
-        obj = tracker.track({})
-        assert simplejson.dumps(obj) == "{}"
-
-    def test_list(self):
-        tracker = a8n.Tracker()
-        obj = tracker.track([])
-        assert simplejson.dumps(obj) == "[]"
-
-
 if __name__ == '__main__':
     unittest.main()
 

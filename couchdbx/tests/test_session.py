@@ -243,6 +243,25 @@ class TestDelete(BaseTestCase):
         assert doc_id not in self.db
 
 
+class TestNested(BaseTestCase):
+
+    def test_nested_dict(self):
+        doc_id = self.db.create({'dict': {'foo': 'foo'}})
+        doc = self.session.get(doc_id)
+        doc['dict']['foo'] = 'oof'
+        self.session.flush()
+        doc = self.db.get(doc_id)
+        assert doc['dict']['foo'] == 'oof'
+
+    def test_nested_list(self):
+        doc_id = self.db.create({'list': ['foo']})
+        doc = self.session.get(doc_id)
+        doc['list'].append('oof')
+        self.session.flush()
+        doc = self.db.get(doc_id)
+        assert doc['list'] == ['foo', 'oof']
+
+
 class TestCombinations(BaseTestCase):
 
     def test_create_using_deleted_doc_id(self):

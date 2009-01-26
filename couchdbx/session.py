@@ -157,9 +157,13 @@ class Session(object):
         deletions = ({'_id': id, '_rev': rev, '_deleted': True}
                      for (id, rev) in deleted.iteritems())
 
-        # Build a list of other updates.
+        # Build a list of other updates. Note that we get the subject out of
+        # changed documents; they're the only docs that will be wrapped in a8n
+        # tracking proxies.
+        # XXX It might be nicer if the cache only ever contains the real
+        # document to avoid having to know about the __subject__ stuff.
         additions = (dict(self._cache[doc_id]) for doc_id in created)
-        changes = (dict(self._cache[doc_id]) for doc_id in changed)
+        changes = (dict(self._cache[doc_id].__subject__) for doc_id in changed)
         updates = itertools.chain(additions, changes)
 
         # Send deletions and clean up cache.
