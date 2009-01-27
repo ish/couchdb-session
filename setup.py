@@ -3,9 +3,9 @@ import sys, os
 
 version = '0.1'
 
-setup(name='couchdbx',
+setup(name='couchdb-session',
       version=version,
-      description="Automatic, \"atomic\" updates for couchdb-python.",
+      description="Automatic, \"atomic\" on top for couchdb-python.",
       long_description="""\
 """,
       classifiers=[], # Get strings from http://pypi.python.org/pypi?%3Aaction=list_classifiers
