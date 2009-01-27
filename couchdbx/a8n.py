@@ -23,16 +23,34 @@ class Tracker(object):
         self._recorder_creates = {}
         self._recorder_edits = {}
 
+    def track(self, obj):
+        """
+        Start tracking an object.
+        """
+        return self._track(obj, [])
+
     def clear(self):
+        """
+        Forget all changes tracked so far.
+        """
         self._changes = []
         self._recorder_creates = {}
         self._recorder_edits = {}
 
-    def __iter__(self):
-        return iter(self._changes)
+    def freeze(self):
+        """
+        Clear tracked changes, but return an iterator over everything changed
+        so far.
+        """
+        it = iter(self)
+        self.clear()
+        return it
 
-    def track(self, obj):
-        return self._track(obj, [])
+    def __iter__(self):
+        """
+        Iterate the changes.
+        """
+        return iter(self._changes)
 
     @abstract
     def _track(self, obj, path):

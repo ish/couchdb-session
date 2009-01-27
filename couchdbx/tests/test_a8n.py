@@ -1,5 +1,4 @@
 import unittest
-import simplejson
 
 from couchdbx import a8n
 

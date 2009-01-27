@@ -8,7 +8,7 @@ from couchdbx import a8n
 
 class Session(object):
 
-    def __init__(self, db, pre_flush_hook=None):
+    def __init__(self, db, pre_flush_hook=None, post_flush_hook=None):
         self._db = db
         self._trackers = {}
         self._cache = {}
@@ -16,6 +16,7 @@ class Session(object):
         self._changed = set()
         self._deleted = {}
         self._pre_flush_hook = pre_flush_hook
+        self._post_flush_hook = post_flush_hook
 
     #- Additional magic methods.
 
@@ -106,9 +107,62 @@ class Session(object):
 
     #- Additional methods.
 
+    def flush(self):
+
+        # XXX Due to a bug in CouchDB (see issue COUCHDB-188) we can't do
+        # deletions at the same time as additions if the list of updates
+        # includes a delete and create for the same id. For now, let's keep
+        # deletions out of the general updates list and make two calls to the
+        # backend.
+
+        while True:
+            # Freeze the session and break out of the loop if there's nothing
+            # to do.
+            deleted, created, changed = self._pre_flush()
+            if not (deleted or created or changed):
+                break
+            # Build a list of deletions.
+            deletions = [{'_id': id, '_rev': rev, '_deleted': True}
+                         for (id, rev) in deleted.iteritems()]
+            # Build a list of other updates. Note that we get the subject out of
+            # changed documents; they're the only docs that will be wrapped in a8n
+            # tracking proxies.
+            # XXX It might be nicer if the cache only ever contains the real
+            # document to avoid having to know about the __subject__ stuff.
+            additions = (self._cache[doc_id] for doc_id in created)
+            changes = (self._cache[doc_id].__subject__ for doc_id in changed)
+            updates = list(itertools.chain(additions, changes))
+            # Send deletions and clean up cache.
+            if deletions:
+                self._db.update(deletions)
+            # Perform updates and fix up the cache with the new _revs.
+            if updates:
+                for response in self._db.update(updates):
+                    self._cache[response['_id']]['_rev'] = response['_rev']
+            # Reset internal tracking now everything's been written.
+            self._post_flush(deleted, created, changed)
+
     def pre_flush_hook(self, deletions, additions, changes):
         if self._pre_flush_hook is not None:
             self._pre_flush_hook(self, deletions, additions, changes)
+
+    def post_flush_hook(self, deletions, additions, changes):
+        if self._post_flush_hook is not None:
+            self._post_flush_hook(self, deletions, additions, changes)
+
+    #- Internal methods.
+
+    def _tracked_and_cached(self, doc):
+        def callback():
+            self._changed.add(doc['_id'])
+        tracker = a8n.Tracker(callback)
+        doc = tracker.track(doc)
+        self._trackers[doc['_id']] = tracker
+        return self._cached(doc)
+
+    def _cached(self, doc):
+        self._cache[doc['_id']] = doc
+        return doc
 
     def _freeze(self):
         deleted, self._deleted = self._deleted, {}
@@ -141,57 +195,19 @@ class Session(object):
 
         return all_deleted, all_created, all_changed
 
-    def flush(self):
+    def _post_flush(self, deleted, created, changed):
+        actions_by_doc = dict((doc_id, self._trackers[doc_id].freeze())
+                              for doc_id in changed)
+        def gen_deletions():
+            return (self._cache[doc_id] for doc_id in deleted.iteritems())
+        def gen_additions():
+            return (self._cache[doc_id] for doc_id in created)
+        def gen_changes():
+            changes = (self._cache[doc_id] for doc_id in changed)
+            changes = ((doc, actions_by_doc[doc['_id']]) for doc in changes)
+            return changes
+        self.post_flush_hook(gen_deletions(), gen_additions(), gen_changes())
 
-        deleted, created, changed = self._pre_flush()
-
-        # XXX Due to a bug in CouchDB (see issue COUCHDB-188) we can't do
-        # deletions at the same time as additions if the list of updates
-        # includes a delete and create for the same id. For now, let's keep
-        # deletions out of the general updates list and make two calls to the
-        # backend.
-        # XXX We can't pass a generator to couchdb's Database.update.
-
-        # Build a list of deletions.
-        deletions = ({'_id': id, '_rev': rev, '_deleted': True}
-                     for (id, rev) in deleted.iteritems())
-
-        # Build a list of other updates. Note that we get the subject out of
-        # changed documents; they're the only docs that will be wrapped in a8n
-        # tracking proxies.
-        # XXX It might be nicer if the cache only ever contains the real
-        # document to avoid having to know about the __subject__ stuff.
-        additions = (self._cache[doc_id] for doc_id in created)
-        changes = (self._cache[doc_id].__subject__ for doc_id in changed)
-        updates = itertools.chain(additions, changes)
-
-        # Send deletions and clean up cache.
-        if deleted:
-            self._db.update(list(deletions))
-            self._deleted.clear()
-
-        # Perform updates and fix up the cache with the new _revs.
-        if created or changed:
-            for response in self._db.update(list(updates)):
-                self._cache[response['_id']]['_rev'] = response['_rev']
-
-        # Clear dirty state in case the session gets reused.
-        self._created.clear()
-        self._changed.clear()
-        for tracker in self._trackers.itervalues():
-            tracker.clear()
-
-    def _tracked_and_cached(self, doc):
-        def callback():
-            self._changed.add(doc['_id'])
-        tracker = a8n.Tracker(callback)
-        doc = tracker.track(doc)
-        self._trackers[doc['_id']] = tracker
-        return self._cached(doc)
-
-    def _cached(self, doc):
-        self._cache[doc['_id']] = doc
-        return doc
 
 
 class SessionViewResults(object):
