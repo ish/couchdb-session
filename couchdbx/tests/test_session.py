@@ -301,23 +301,37 @@ class TestFlushHook(unittest.TestCase):
     def tearDown(self):
         del self.server[self.db_name]
 
-    def test_pre_flush_hook(self):
+    def test_pre_flush_hook_arg(self):
         S = session.Session(self.db, pre_flush_hook=self._flush_hook)
-        tag = get_one(S, 'test/tag_by_name', 'foo')
-        tag['name'] = 'oof'
-        S.flush()
-        assert len(get_many(S, 'test/post_by_tag', 'foo')) == 0
-        assert len(get_many(S, 'test/post_by_tag', 'oof')) == 1
-        assert len(get_many(S, 'test/post_by_tag', 'bar')) == 1
+        self._run_test_with_session(S)
 
-    def test_post_flush_hook(self):
+    def test_pre_flush_hook_subclass(self):
+        flush_hook = self._flush_hook
+        class Session(session.Session):
+            def pre_flush_hook(self, *a, **k):
+                return flush_hook(self, *a, **k)
+        S = Session(self.db)
+        self._run_test_with_session(S)
+
+    def test_post_flush_hook_arg(self):
         S = session.Session(self.db, post_flush_hook=self._flush_hook)
-        tag = get_one(S, 'test/tag_by_name', 'foo')
+        self._run_test_with_session(S)
+
+    def test_post_flush_hook_subclass(self):
+        flush_hook = self._flush_hook
+        class Session(session.Session):
+            def post_flush_hook(self, *a, **k):
+                return flush_hook(self, *a, **k)
+        S = Session(self.db)
+        self._run_test_with_session(S)
+
+    def _run_test_with_session(self, session):
+        tag = get_one(session, 'test/tag_by_name', 'foo')
         tag['name'] = 'oof'
-        S.flush()
-        assert len(get_many(S, 'test/post_by_tag', 'foo')) == 0
-        assert len(get_many(S, 'test/post_by_tag', 'oof')) == 1
-        assert len(get_many(S, 'test/post_by_tag', 'bar')) == 1
+        session.flush()
+        assert len(get_many(session, 'test/post_by_tag', 'foo')) == 0
+        assert len(get_many(session, 'test/post_by_tag', 'oof')) == 1
+        assert len(get_many(session, 'test/post_by_tag', 'bar')) == 1
 
     def _flush_hook(self, session, deletions, additions, changes):
         for doc, actions in changes:
