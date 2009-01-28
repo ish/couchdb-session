@@ -10,13 +10,9 @@ class Session(object):
 
     def __init__(self, db, pre_flush_hook=None, post_flush_hook=None):
         self._db = db
-        self._trackers = {}
-        self._cache = {}
-        self._created = set()
-        self._changed = set()
-        self._deleted = {}
         self._pre_flush_hook = pre_flush_hook
         self._post_flush_hook = post_flush_hook
+        self.reset()
 
     #- Additional magic methods.
 
@@ -106,6 +102,16 @@ class Session(object):
         return SessionViewResults(self, self._db.view(*a, **k))
 
     #- Additional methods.
+
+    def reset(self):
+        """
+        Reset the session, forgetting everything it knows.
+        """
+        self._trackers = {}
+        self._cache = {}
+        self._created = set()
+        self._changed = set()
+        self._deleted = {}
 
     def flush(self):
 
