@@ -2,7 +2,7 @@ import unittest
 import uuid
 import couchdb
 
-from couchdbx import session
+from couchdbsession import session
 
 
 class BaseTestCase(unittest.TestCase):

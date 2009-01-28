@@ -1,2 +1,2 @@
-from couchdbx.session import Session
+from couchdbsession.session import Session
 

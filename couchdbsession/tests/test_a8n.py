@@ -1,6 +1,6 @@
 import unittest
 
-from couchdbx import a8n
+from couchdbsession import a8n
 
 
 """
