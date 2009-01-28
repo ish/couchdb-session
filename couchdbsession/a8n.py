@@ -4,6 +4,7 @@ Known limitations:
 """
 
 import itertools
+import types
 import UserDict
 from peak.rules import abstract, when
 from peak.util.proxies import ObjectWrapper
@@ -56,9 +57,11 @@ class Tracker(object):
     def _track(self, obj, path):
         pass
 
+    @when(_track, (types.NoneType,))
     @when(_track, (bool,))
     @when(_track, (float,))
     @when(_track, (int,))
+    @when(_track, (long,))
     @when(_track, (str,))
     @when(_track, (unicode,))
     def _track_immutable(self, obj, path):

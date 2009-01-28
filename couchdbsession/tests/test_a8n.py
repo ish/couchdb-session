@@ -23,6 +23,14 @@ class TestTracker(unittest.TestCase):
         assert state
 
 
+class TestImmutableTracking(unittest.TestCase):
+
+    def test_types(self):
+        tracker = a8n.Tracker()
+        for obj in [None, True, False, 'string', u'unicode', 1, 1L, 1.0]:
+            assert obj is tracker.track(obj)
+
+
 class TestDictTracking(unittest.TestCase):
 
     def test_add_item(self):
