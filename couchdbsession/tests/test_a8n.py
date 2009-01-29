@@ -128,6 +128,12 @@ class TestDictTracking(unittest.TestCase):
         del obj['nested']
         assert XXX_WITHOUT_WAS(tracker) == XXX_WITHOUT_WAS([{'action': 'remove', 'path': ['nested'], 'was': {'a': 0, 'c': 2}}])
 
+    def test_update(self):
+        tracker = a8n.Tracker()
+        obj = tracker.track({})
+        obj.update({'foo': 'bar'})
+        assert list(tracker) == [{'action': 'create', 'path': ['foo'], 'value': 'bar'}]
+
 
 class TestListTracking(unittest.TestCase):
 
@@ -279,6 +285,12 @@ class TestNested(unittest.TestCase):
         tracker = a8n.Tracker()
         obj = tracker.track({'dict': {}})
         obj['dict']['foo'] = 'bar'
+        assert list(tracker) == [{'action': 'create', 'path': ['dict', 'foo'], 'value': 'bar'}]
+
+    def test_dict_in_dict_update(self):
+        tracker = a8n.Tracker()
+        obj = tracker.track({'dict': {}})
+        obj['dict'].update({'foo': 'bar'})
         assert list(tracker) == [{'action': 'create', 'path': ['dict', 'foo'], 'value': 'bar'}]
 
     def test_dict_in_list(self):
