@@ -266,7 +266,7 @@ class TestListTracking(unittest.TestCase):
         obj[0] = {}
         assert XXX_WITHOUT_WAS(tracker) == XXX_WITHOUT_WAS([{'action': 'edit', 'path': [0], 'value': {}, 'was': {'a': 0, 'c': 2}}])
 
-    def test_remove_nested_with_actions(sel):
+    def test_remove_nested_with_actions(self):
         tracker = a8n.Tracker()
         obj = tracker.track([{'a': 0, 'c': 2}])
         obj[0]['a'] = 1
