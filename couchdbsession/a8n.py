@@ -227,6 +227,10 @@ class List(ObjectWrapper):
         super(List, self).__init__(subject)
         self.__recorder = recorder
 
+    def __iter__(self):
+        for pos, item in enumerate(self.__subject__):
+            yield self.__recorder.track_child(item, pos)
+
     def __getitem__(self, pos):
         value = self.__subject__.__getitem__(pos)
         if pos in self.__recorder._creates:
