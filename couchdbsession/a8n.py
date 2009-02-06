@@ -3,6 +3,7 @@ Known limitations:
     * Not thread safe.
 """
 
+import datetime
 import itertools
 import types
 import UserDict
@@ -64,6 +65,9 @@ class Tracker(object):
     @when(_track, (long,))
     @when(_track, (str,))
     @when(_track, (unicode,))
+    @when(_track, (datetime.datetime,))
+    @when(_track, (datetime.date,))
+    @when(_track, (datetime.time,))
     def _track_immutable(self, obj, path):
         return obj
 

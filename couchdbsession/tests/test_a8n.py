@@ -1,3 +1,4 @@
+import datetime
 import unittest
 
 from couchdbsession import a8n
@@ -27,7 +28,9 @@ class TestImmutableTracking(unittest.TestCase):
 
     def test_types(self):
         tracker = a8n.Tracker()
-        for obj in [None, True, False, 'string', u'unicode', 1, 1L, 1.0]:
+        for obj in [None, True, False, 'string', u'unicode', 1, 1L, 1.0,
+                    datetime.datetime.utcnow(), datetime.date.today(),
+                    datetime.datetime.utcnow().time()]:
             assert obj is tracker.track(obj)
 
 
