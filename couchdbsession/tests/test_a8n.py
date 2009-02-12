@@ -289,6 +289,42 @@ class TestListTracking(unittest.TestCase):
         assert list(tracker) == [{'action': 'create', 'path': [0, 'foo'], 'value': 'bar'},
                                  {'action': 'create', 'path': [1, 'foo'], 'value': 'bar'}]
 
+    def test_sort_forward(self):
+        tests = [
+            ([3, 1, 2], [{'action': 'edit', 'path': [0], 'value': 1, 'was': 3},
+                         {'action': 'edit', 'path': [1], 'value': 2, 'was': 1},
+                         {'action': 'edit', 'path': [2], 'value': 3, 'was': 2}]),
+            ([1, 3, 2], [{'action': 'edit', 'path': [1], 'value': 2, 'was': 3},
+                         {'action': 'edit', 'path': [2], 'value': 3, 'was': 2}]),
+            ([1], []),
+        ]
+        for l, actions in tests:
+            input = list(l)
+            output = sorted(l)
+            tracker = a8n.Tracker()
+            obj = tracker.track(l)
+            obj.sort()
+            assert obj == output
+            assert list(tracker) == actions
+
+    def test_sort_reverse(self):
+        tests = [
+            ([3, 1, 2], [{'action': 'edit', 'path': [1], 'value': 2, 'was': 1},
+                         {'action': 'edit', 'path': [2], 'value': 1, 'was': 2}]),
+            ([1, 3, 2], [{'action': 'edit', 'path': [0], 'value': 3, 'was': 1},
+                         {'action': 'edit', 'path': [1], 'value': 2, 'was': 3},
+                         {'action': 'edit', 'path': [2], 'value': 1, 'was': 2}]),
+            ([1], []),
+        ]
+        for l, actions in tests:
+            input = list(l)
+            output = sorted(l, reverse=True)
+            tracker = a8n.Tracker()
+            obj = tracker.track(l)
+            obj.sort(reverse=True)
+            assert obj == output
+            assert list(tracker) == actions
+
 
 class TestNested(unittest.TestCase):
 
