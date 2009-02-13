@@ -1,3 +1,4 @@
+import itertools
 import unittest
 import uuid
 import couchdb
@@ -5,22 +6,40 @@ import couchdb
 from couchdbsession import session
 
 
-class BaseTestCase(unittest.TestCase):
+SERVER_URL = 'http://localhost:5984/'
 
-    server_url = 'http://localhost:5984/'
 
+class TempDatabaseMixin(object):
     def setUp(self):
         self.db_name = 'test_'+str(uuid.uuid4())
-        self.server = couchdb.Server(self.server_url)
+        self.server = couchdb.Server(SERVER_URL)
         self.db = self.server.create(self.db_name)
-        self.session = session.Session(self.db)
-        self.db.update([{'_id': str(i)} for i in range(10)])
-
     def tearDown(self):
         del self.server[self.db_name]
 
 
-class TestComposition(BaseTestCase):
+class SimpleSessionMixin(object):
+    def setUp(self):
+        super(SimpleSessionMixin, self).setUp()
+        self.session = session.Session(self.db)
+
+
+class BaseTestCase(SimpleSessionMixin, TempDatabaseMixin, unittest.TestCase):
+    pass
+
+
+class PopulatedDatabaseBaseTestCase(SimpleSessionMixin, TempDatabaseMixin, unittest.TestCase):
+    def setUp(self):
+        super(PopulatedDatabaseBaseTestCase, self).setUp()
+        self.db.update([{'_id': str(i)} for i in range(10)])
+
+
+class TestEmptyDatabase(BaseTestCase):
+    def test_iter(self):
+        assert list(self.session._db) == list(self.session)
+
+
+class TestComposition(PopulatedDatabaseBaseTestCase):
 
     def test_iter(self):
         """
@@ -45,7 +64,7 @@ class TestComposition(BaseTestCase):
         assert self.session.info() == self.db.info()
 
 
-class TestView(BaseTestCase):
+class TestView(PopulatedDatabaseBaseTestCase):
 
     def test_view_len(self):
         view = self.session.view('_all_docs')
@@ -55,7 +74,7 @@ class TestView(BaseTestCase):
         assert isinstance(self.session.view('_all_docs'), session.SessionViewResults)
 
 
-class TestViewResults(BaseTestCase):
+class TestViewResults(PopulatedDatabaseBaseTestCase):
 
     def test_iter(self):
         assert isinstance(iter(self.session.view('_all_docs')).next(), session.SessionRow)
@@ -64,7 +83,7 @@ class TestViewResults(BaseTestCase):
         assert isinstance(self.session.view('_all_docs').rows[0], session.SessionRow)
 
 
-class TestCaching(BaseTestCase):
+class TestCaching(PopulatedDatabaseBaseTestCase):
 
     def test_get(self):
         doc1 = self.session.get('0')
@@ -135,7 +154,7 @@ class TestSessionChangeRecorder(BaseTestCase):
         assert len(self.session._changed) == 2
 
 
-class TestUpdates(BaseTestCase):
+class TestUpdates(PopulatedDatabaseBaseTestCase):
 
     def test_change_one(self):
         doc_id = self.db.create({})
@@ -262,7 +281,7 @@ class TestNested(BaseTestCase):
         assert doc['list'] == ['foo', 'oof']
 
 
-class TestCombinations(BaseTestCase):
+class TestCombinations(PopulatedDatabaseBaseTestCase):
 
     def test_create_using_deleted_doc_id(self):
         doc_id = self.db.create({'foo': 'bar'})
@@ -275,14 +294,33 @@ class TestCombinations(BaseTestCase):
         assert self.db.get(doc_id)['foo'] == 'wibble'
 
 
-class TestFlushHook(unittest.TestCase):
+class TestFlush(TempDatabaseMixin, unittest.TestCase):
+
+    def setUp(self):
+        super(TestFlush, self).setUp()
+        self.session = session.Session(self.db,
+                                       pre_flush_hook=self._flush_hook,
+                                       post_flush_hook=self._flush_hook)
+
+    def test_delete(self):
+        doc_id = self.db.create({})
+        doc = self.session.get(doc_id)
+        self.session.delete(doc)
+        self.session.flush()
+        assert self.db.get(doc_id) is None
+
+    def _flush_hook(self, session, deletions, additions, changes):
+        # Just to consume all the generators to ensure they're correct.
+        for i in itertools.chain(deletions, additions, changes):
+            pass
+
+
+class TestFlushHook(TempDatabaseMixin, unittest.TestCase):
 
     server_url = 'http://localhost:5984/'
 
     def setUp(self):
-        self.db_name = 'test_'+str(uuid.uuid4())
-        self.server = couchdb.Server(self.server_url)
-        self.db = self.server.create(self.db_name)
+        super(TestFlushHook, self).setUp()
         self.db.update([
             {'type': 'tag', 'name': 'foo'},
             {'type': 'tag', 'name': 'bar'},
@@ -297,9 +335,6 @@ class TestFlushHook(unittest.TestCase):
                     }
                 }},
             ])
-
-    def tearDown(self):
-        del self.server[self.db_name]
 
     def test_pre_flush_hook_arg(self):
         S = session.Session(self.db, pre_flush_hook=self._flush_hook)

@@ -1,3 +1,4 @@
+import datetime
 import unittest
 
 from couchdbsession import a8n
@@ -27,7 +28,9 @@ class TestImmutableTracking(unittest.TestCase):
 
     def test_types(self):
         tracker = a8n.Tracker()
-        for obj in [None, True, False, 'string', u'unicode', 1, 1L, 1.0]:
+        for obj in [None, True, False, 'string', u'unicode', 1, 1L, 1.0,
+                    datetime.datetime.utcnow(), datetime.date.today(),
+                    datetime.datetime.utcnow().time()]:
             assert obj is tracker.track(obj)
 
 
@@ -285,6 +288,42 @@ class TestListTracking(unittest.TestCase):
             d['foo'] = 'bar'
         assert list(tracker) == [{'action': 'create', 'path': [0, 'foo'], 'value': 'bar'},
                                  {'action': 'create', 'path': [1, 'foo'], 'value': 'bar'}]
+
+    def test_sort_forward(self):
+        tests = [
+            ([3, 1, 2], [{'action': 'edit', 'path': [0], 'value': 1, 'was': 3},
+                         {'action': 'edit', 'path': [1], 'value': 2, 'was': 1},
+                         {'action': 'edit', 'path': [2], 'value': 3, 'was': 2}]),
+            ([1, 3, 2], [{'action': 'edit', 'path': [1], 'value': 2, 'was': 3},
+                         {'action': 'edit', 'path': [2], 'value': 3, 'was': 2}]),
+            ([1], []),
+        ]
+        for l, actions in tests:
+            input = list(l)
+            output = sorted(l)
+            tracker = a8n.Tracker()
+            obj = tracker.track(l)
+            obj.sort()
+            assert obj == output
+            assert list(tracker) == actions
+
+    def test_sort_reverse(self):
+        tests = [
+            ([3, 1, 2], [{'action': 'edit', 'path': [1], 'value': 2, 'was': 1},
+                         {'action': 'edit', 'path': [2], 'value': 1, 'was': 2}]),
+            ([1, 3, 2], [{'action': 'edit', 'path': [0], 'value': 3, 'was': 1},
+                         {'action': 'edit', 'path': [1], 'value': 2, 'was': 3},
+                         {'action': 'edit', 'path': [2], 'value': 1, 'was': 2}]),
+            ([1], []),
+        ]
+        for l, actions in tests:
+            input = list(l)
+            output = sorted(l, reverse=True)
+            tracker = a8n.Tracker()
+            obj = tracker.track(l)
+            obj.sort(reverse=True)
+            assert obj == output
+            assert list(tracker) == actions
 
 
 class TestNested(unittest.TestCase):

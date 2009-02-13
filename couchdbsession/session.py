@@ -67,7 +67,7 @@ class Session(object):
             self._created.remove(doc['_id'])
         else:
             self._changed.discard(doc['_id'])
-            self._deleted[doc['_id']] = doc['_rev']
+            self._deleted[doc['_id']] = doc
         del self._cache[doc['_id']]
 
     def get(self, id, default=None, **options):
@@ -128,8 +128,8 @@ class Session(object):
             if not (deleted or created or changed):
                 break
             # Build a list of deletions.
-            deletions = [{'_id': id, '_rev': rev, '_deleted': True}
-                         for (id, rev) in deleted.iteritems()]
+            deletions = [{'_id': id, '_rev': doc['_rev'], '_deleted': True}
+                         for (id, doc) in deleted.iteritems()]
             # Build a list of other updates. Note that we get the subject out of
             # changed documents; they're the only docs that will be wrapped in a8n
             # tracking proxies.
@@ -190,7 +190,7 @@ class Session(object):
             all_created.update(created)
             all_changed.update(changed)
             def gen_deletions():
-                return (self._cache[doc_id] for doc_id in deleted.iteritems())
+                return deleted.itervalues()
             def gen_additions():
                 return (self._cache[doc_id] for doc_id in created)
             def gen_changes():
@@ -205,7 +205,7 @@ class Session(object):
         actions_by_doc = dict((doc_id, self._trackers[doc_id].freeze())
                               for doc_id in changed)
         def gen_deletions():
-            return (self._cache[doc_id] for doc_id in deleted.iteritems())
+            return deleted.itervalues()
         def gen_additions():
             return (self._cache[doc_id] for doc_id in created)
         def gen_changes():

@@ -3,6 +3,7 @@ Known limitations:
     * Not thread safe.
 """
 
+import datetime
 import itertools
 import types
 import UserDict
@@ -64,6 +65,9 @@ class Tracker(object):
     @when(_track, (long,))
     @when(_track, (str,))
     @when(_track, (unicode,))
+    @when(_track, (datetime.datetime,))
+    @when(_track, (datetime.date,))
+    @when(_track, (datetime.time,))
     def _track_immutable(self, obj, path):
         return obj
 
@@ -293,7 +297,13 @@ class List(ObjectWrapper):
         raise NotImplementedError()
 
     def sort(self, *a, **k):
-        raise NotImplementedError()
+        before = list(self.__subject__)
+        before_pos = dict((id(i), pos) for pos, i in enumerate(self.__subject__))
+        self.__subject__.sort(*a, **k)
+        for pos, i in enumerate(self.__subject__):
+            oldpos = before_pos[id(i)]
+            if pos != oldpos:
+                self.__recorder.edit(pos, i, before[pos])
 
     def __real_pos(self, pos):
         if pos < 0:
