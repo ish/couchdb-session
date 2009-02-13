@@ -33,6 +33,11 @@ class PopulatedDatabaseBaseTestCase(SimpleSessionMixin, TempDatabaseMixin, unitt
         self.db.update([{'_id': str(i)} for i in range(10)])
 
 
+class TestEmptyDatabase(BaseTestCase):
+    def test_iter(self):
+        assert list(self.session._db) == list(self.session)
+
+
 class TestComposition(PopulatedDatabaseBaseTestCase):
 
     def test_iter(self):
