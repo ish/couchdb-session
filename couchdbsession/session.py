@@ -1,4 +1,3 @@
-import copy
 import itertools
 import uuid
 import couchdb
@@ -52,11 +51,17 @@ class Session(object):
         self.create(doc)
 
     def create(self, doc):
-        # XXX Whenever I see an object being copied I assume it's probably
-        # wrong. However, in this case, I want the same semantics as the
-        # underlying db's create to continue and be able to return the cached
-        # document should it be asked for by ID.
-        # **but** we removed the deepcopy anyway because it's wrong.. 
+        # XXX Note: Session's create() has slightly different semantics to
+        # couchdb-python.
+        # In couchdb-python the doc id is returned and the doc dict is left
+        # untouched. Here, we need to cache the document so get() and
+        # __getitem__() work as expected but the document returned from those
+        # should contain and id.
+        # The choice was to store a copy of the doc dict, with the id added, in
+        # the cache or simple update the doc dict with an id and store the doc
+        # dict itself in the cache.
+        # deepcopy is not a very nice thing to use so, in the end the decision
+        # was to store the doc dict dict in the cache.
         if '_id' not in doc:
             doc['_id'] = uuid.uuid4().hex
         self._created.add(doc['_id'])
