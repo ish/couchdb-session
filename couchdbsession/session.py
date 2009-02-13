@@ -51,12 +51,12 @@ class Session(object):
         doc['_id'] = id
         self.create(doc)
 
-    def create(self, data):
+    def create(self, doc):
         # XXX Whenever I see an object being copied I assume it's probably
         # wrong. However, in this case, I want the same semantics as the
         # underlying db's create to continue and be able to return the cached
         # document should it be asked for by ID.
-        doc = copy.deepcopy(data)
+        # **but** we removed the deepcopy anyway because it's wrong.. 
         if '_id' not in doc:
             doc['_id'] = uuid.uuid4().hex
         self._created.add(doc['_id'])
