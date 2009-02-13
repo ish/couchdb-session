@@ -1,3 +1,4 @@
+import itertools
 import unittest
 import uuid
 import couchdb
@@ -291,6 +292,27 @@ class TestCombinations(PopulatedDatabaseBaseTestCase):
         self.session.flush()
         assert len(self.db) == 11
         assert self.db.get(doc_id)['foo'] == 'wibble'
+
+
+class TestFlush(TempDatabaseMixin, unittest.TestCase):
+
+    def setUp(self):
+        super(TestFlush, self).setUp()
+        self.session = session.Session(self.db,
+                                       pre_flush_hook=self._flush_hook,
+                                       post_flush_hook=self._flush_hook)
+
+    def test_delete(self):
+        doc_id = self.db.create({})
+        doc = self.session.get(doc_id)
+        self.session.delete(doc)
+        self.session.flush()
+        assert self.db.get(doc_id) is None
+
+    def _flush_hook(self, session, deletions, additions, changes):
+        # Just to consume all the generators to ensure they're correct.
+        for i in itertools.chain(deletions, additions, changes):
+            pass
 
 
 class TestFlushHook(TempDatabaseMixin, unittest.TestCase):
