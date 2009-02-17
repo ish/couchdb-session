@@ -7,6 +7,8 @@ from couchdbsession import a8n
 
 class Session(object):
 
+    tracker_factory = a8n.Tracker
+
     def __init__(self, db, pre_flush_hook=None, post_flush_hook=None,
                  encode_doc=None, decode_doc=None):
         self._db = db
@@ -189,7 +191,7 @@ class Session(object):
     def _tracked_and_cached(self, doc):
         def callback():
             self._changed.add(doc['_id'])
-        tracker = a8n.Tracker(callback)
+        tracker = self.tracker_factory(callback)
         doc = tracker.track(doc)
         self._trackers[doc['_id']] = tracker
         return self._cached(doc)

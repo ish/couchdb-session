@@ -3,7 +3,7 @@ import unittest
 import uuid
 import couchdb
 
-from couchdbsession import session
+from couchdbsession import a8n, session
 
 
 SERVER_URL = 'http://localhost:5984/'
@@ -403,6 +403,21 @@ class TestEncodeDecodeHooks(TempDatabaseMixin, unittest.TestCase):
         assert 'foo' not in make_session().get(doc_id)
         assert 'foo' not in iter(make_session().view('_all_docs', include_docs=True)).next().doc
         assert 'foo' not in make_session().view('_all_docs', include_docs=True).rows[0].doc
+
+
+class TestTrackerOverride(TempDatabaseMixin, unittest.TestCase):
+
+    def test_override(self):
+        state = {}
+        class Tracker(a8n.Tracker):
+            def _track(self, obj, path):
+                state['_track'] = True
+                return super(Tracker, self)._track(obj, path)
+        class Session(session.Session):
+            tracker_factory = Tracker
+        doc_id = self.db.create({})
+        doc = Session(self.db).get(doc_id)
+        assert state['_track']
 
 
 def get_one(session, view, key):
