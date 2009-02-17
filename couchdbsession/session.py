@@ -7,10 +7,13 @@ from couchdbsession import a8n
 
 class Session(object):
 
-    def __init__(self, db, pre_flush_hook=None, post_flush_hook=None):
+    def __init__(self, db, pre_flush_hook=None, post_flush_hook=None,
+                 encode_doc=None, decode_doc=None):
         self._db = db
         self._pre_flush_hook = pre_flush_hook
         self._post_flush_hook = post_flush_hook
+        self._encode_doc = encode_doc
+        self._decode_doc = decode_doc
         self.reset()
 
     #- Additional magic methods.
@@ -86,6 +89,7 @@ class Session(object):
         doc = self._db.get(id, default, **options)
         if doc is default:
             return doc
+        doc = self.decode_doc(doc)
         return self._tracked_and_cached(doc)
 
     def delete_attachment(self, doc, filename):
@@ -107,6 +111,23 @@ class Session(object):
         return SessionViewResults(self, self._db.view(*a, **k))
 
     #- Additional methods.
+
+    def encode_doc(self, doc):
+        """
+        Encode document hook, called whenever a doc is sent to the CouchDB.
+        """
+        if self._encode_doc:
+            return self._encode_doc(doc)
+        return doc
+
+    def decode_doc(self, doc):
+        """
+        Decode document hook, called whenever a doc is retrieved from the
+        CouchDB.
+        """
+        if self._decode_doc:
+            return self._decode_doc(doc)
+        return doc
 
     def reset(self):
         """
@@ -142,7 +163,9 @@ class Session(object):
             # document to avoid having to know about the __subject__ stuff.
             additions = (self._cache[doc_id] for doc_id in created)
             changes = (self._cache[doc_id].__subject__ for doc_id in changed)
-            updates = list(itertools.chain(additions, changes))
+            updates = itertools.chain(additions, changes)
+            updates = (self.encode_doc(doc) for doc in updates)
+            updates = list(updates)
             # Send deletions and clean up cache.
             if deletions:
                 self._db.update(deletions)
@@ -220,7 +243,6 @@ class Session(object):
         self.post_flush_hook(gen_deletions(), gen_additions(), gen_changes())
 
 
-
 class SessionViewResults(object):
 
     def __init__(self, session, view_results):
@@ -261,5 +283,6 @@ class SessionRow(object):
             cached = self._session._cache.get(doc['_id'])
             if cached is not None:
                 return cached
+            doc = self._session.decode_doc(doc)
             return self._session._tracked_and_cached(doc)
 

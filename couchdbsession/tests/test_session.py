@@ -378,6 +378,33 @@ class TestFlushHook(TempDatabaseMixin, unittest.TestCase):
                         post['tag'] = action['value']
 
 
+class TestEncodeDecodeHooks(TempDatabaseMixin, unittest.TestCase):
+
+    def test_encode(self):
+        def encode_doc(doc):
+            doc = dict(doc)
+            doc['foo'] = 'bar'
+            return doc
+        S = session.Session(self.db, encode_doc=encode_doc)
+        S.create({'_id': 'doc'})
+        S.flush()
+        assert 'foo' not in S.get('doc')
+        assert self.db.get('doc')['foo'] == 'bar'
+
+    def test_decode(self):
+        def decode_doc(doc):
+            doc = dict(doc)
+            del doc['foo']
+            return doc
+        def make_session():
+            return session.Session(self.db, decode_doc=decode_doc)
+        doc_id = self.db.create({'foo': 'bar'})
+        assert 'foo' not in make_session()[doc_id]
+        assert 'foo' not in make_session().get(doc_id)
+        assert 'foo' not in iter(make_session().view('_all_docs', include_docs=True)).next().doc
+        assert 'foo' not in make_session().view('_all_docs', include_docs=True).rows[0].doc
+
+
 def get_one(session, view, key):
     rows = session.view(view, startkey=key, endkey=key, include_docs=True, limit=2).rows
     if len(rows) != 1:
