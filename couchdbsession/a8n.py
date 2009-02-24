@@ -10,6 +10,7 @@ import UserDict
 from peak.rules import abstract, when
 from peak.util.proxies import ObjectWrapper
 import couchdb
+from decimal import Decimal
 
 
 _SENTINEL = object()
@@ -68,6 +69,7 @@ class Tracker(object):
     @when(_track, (datetime.datetime,))
     @when(_track, (datetime.date,))
     @when(_track, (datetime.time,))
+    @when(_track, (Decimal,))
     def _track_immutable(self, obj, path):
         return obj
 
