@@ -70,7 +70,7 @@ class Session(object):
         if '_id' not in doc:
             doc['_id'] = uuid.uuid4().hex
         self._created.add(doc['_id'])
-        return self._cached(doc)['_id']
+        return self._tracked_and_cached(doc)['_id']
 
     def delete(self, doc):
         if doc['_id'] in self._created:
@@ -153,6 +153,8 @@ class Session(object):
             # Freeze the session and break out of the loop if there's nothing
             # to do.
             deleted, created, changed = self._pre_flush()
+            print "*", deleted, created, changed
+            print "deleted=%d, created=%d, changed=%d" % (len(deleted), len(created), len(changed))
             if not (deleted or created or changed):
                 break
             # Build a list of deletions.
@@ -163,7 +165,7 @@ class Session(object):
             # tracking proxies.
             # XXX It might be nicer if the cache only ever contains the real
             # document to avoid having to know about the __subject__ stuff.
-            additions = (self._cache[doc_id] for doc_id in created)
+            additions = (self._cache[doc_id].__subject__ for doc_id in created)
             changes = (self._cache[doc_id].__subject__ for doc_id in changed)
             updates = itertools.chain(additions, changes)
             updates = (self.encode_doc(doc) for doc in updates)
@@ -174,7 +176,7 @@ class Session(object):
             # Perform updates and fix up the cache with the new _revs.
             if updates:
                 for response in self._db.update(updates):
-                    self._cache[response['_id']]['_rev'] = response['_rev']
+                    self._cache[response['_id']].__subject__['_rev'] = response['_rev']
             # Reset internal tracking now everything's been written.
             self._post_flush(deleted, created, changed)
 
@@ -190,6 +192,8 @@ class Session(object):
 
     def _tracked_and_cached(self, doc):
         def callback():
+            if doc['_id'] in self._created:
+                return
             self._changed.add(doc['_id'])
         tracker = self.tracker_factory(callback)
         doc = tracker.track(doc)

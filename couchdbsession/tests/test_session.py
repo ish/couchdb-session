@@ -310,11 +310,25 @@ class TestFlush(TempDatabaseMixin, unittest.TestCase):
         assert self.db.get(doc_id) is None
 
     def test_flush_again(self):
+        """
+        Check multiple flushes during the same session.
+        """
         doc_id = self.db.create({})
         doc = self.session.get(doc_id)
         doc['num'] = 1
         self.session.flush()
         assert self.db.get(doc_id)['num'] == 1
+        doc['num'] = 2
+        self.session.flush()
+        assert self.db.get(doc_id)['num'] == 2
+
+    def test_create_change(self):
+        """
+        Check that a new document can later be changed in the same session.
+        """
+        doc_id = self.session.create({'num': 1})
+        self.session.flush()
+        doc = self.session.get(doc_id)
         doc['num'] = 2
         self.session.flush()
         assert self.db.get(doc_id)['num'] == 2
