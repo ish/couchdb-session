@@ -309,6 +309,16 @@ class TestFlush(TempDatabaseMixin, unittest.TestCase):
         self.session.flush()
         assert self.db.get(doc_id) is None
 
+    def test_flush_again(self):
+        doc_id = self.db.create({})
+        doc = self.session.get(doc_id)
+        doc['num'] = 1
+        self.session.flush()
+        assert self.db.get(doc_id)['num'] == 1
+        doc['num'] = 2
+        self.session.flush()
+        assert self.db.get(doc_id)['num'] == 2
+
     def _flush_hook(self, session, deletions, additions, changes):
         # Just to consume all the generators to ensure they're correct.
         for i in itertools.chain(deletions, additions, changes):
