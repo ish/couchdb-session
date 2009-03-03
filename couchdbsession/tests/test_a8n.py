@@ -137,6 +137,13 @@ class TestDictTracking(unittest.TestCase):
         obj.update({'foo': 'bar'})
         assert list(tracker) == [{'action': 'create', 'path': ['foo'], 'value': 'bar'}]
 
+    def test_edits_not_wrapped(self):
+        tracker = a8n.Tracker()
+        obj = tracker.track({'foo': {}})
+        assert hasattr(obj['foo'], '__subject__')
+        obj['foo'] = {}
+        assert not hasattr(obj['foo'], '__subject__')
+
 
 class TestListTracking(unittest.TestCase):
 
@@ -324,6 +331,15 @@ class TestListTracking(unittest.TestCase):
             obj.sort(reverse=True)
             assert obj == output
             assert list(tracker) == actions
+
+    def test_edits_not_wrapped(self):
+        tracker = a8n.Tracker()
+        obj = tracker.track([[]])
+        obj[0] = []
+        # getitem
+        assert not hasattr(obj[0], '__subject__')
+        # iter
+        assert not hasattr(iter(obj).next(), '__subject__')
 
 
 class TestNested(unittest.TestCase):

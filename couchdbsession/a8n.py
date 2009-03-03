@@ -199,7 +199,7 @@ class Dictionary(UserDict.DictMixin, ObjectWrapper):
 
     def __getitem__(self, name):
         value = self.__subject__.__getitem__(name)
-        if name in self.__recorder._creates:
+        if name in self.__recorder._creates or name in self.__recorder._edits:
             return value
         return self.__recorder.track_child(value, name)
 
@@ -235,11 +235,14 @@ class List(ObjectWrapper):
 
     def __iter__(self):
         for pos, item in enumerate(self.__subject__):
-            yield self.__recorder.track_child(item, pos)
+            if pos in self.__recorder._creates or pos in self.__recorder._edits:
+                yield item
+            else:
+                yield self.__recorder.track_child(item, pos)
 
     def __getitem__(self, pos):
         value = self.__subject__.__getitem__(pos)
-        if pos in self.__recorder._creates:
+        if pos in self.__recorder._creates or pos in self.__recorder._edits:
             return value
         return self.__recorder.track_child(value, pos)
         
