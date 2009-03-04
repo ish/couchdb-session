@@ -70,6 +70,7 @@ class Tracker(object):
     @when(_track, (datetime.date,))
     @when(_track, (datetime.time,))
     @when(_track, (Decimal,))
+    @when(_track, (tuple,))
     def _track_immutable(self, obj, path):
         return obj
 

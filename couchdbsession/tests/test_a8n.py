@@ -30,7 +30,7 @@ class TestImmutableTracking(unittest.TestCase):
         tracker = a8n.Tracker()
         for obj in [None, True, False, 'string', u'unicode', 1, 1L, 1.0,
                     datetime.datetime.utcnow(), datetime.date.today(),
-                    datetime.datetime.utcnow().time()]:
+                    datetime.datetime.utcnow().time(), ('a', 'tuple')]:
             assert obj is tracker.track(obj)
 
 
