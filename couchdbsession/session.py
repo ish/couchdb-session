@@ -153,8 +153,6 @@ class Session(object):
             # Freeze the session and break out of the loop if there's nothing
             # to do.
             deleted, created, changed = self._pre_flush()
-            print "*", deleted, created, changed
-            print "deleted=%d, created=%d, changed=%d" % (len(deleted), len(created), len(changed))
             if not (deleted or created or changed):
                 break
             # Build a list of deletions.
