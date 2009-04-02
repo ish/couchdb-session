@@ -1,0 +1,10 @@
+Metadata-Version: 1.0
+Name: couchdb-session
+Version: 0.1
+Summary: Automatic, "atomic" on top for couchdb-python.
+Home-page: UNKNOWN
+Author: Matt Goodall
+Author-email: matt.goodall@gmail.com
+License: BSD
+Description: UNKNOWN
+Platform: UNKNOWN
