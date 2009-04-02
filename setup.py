@@ -19,7 +19,7 @@ setup(name='couchdb-session',
       zip_safe=False,
       install_requires=[
           # -*- Extra requirements: -*-
-          'couchdb-python',
+          'couchdb',
       ],
       entry_points="""
       # -*- Entry points: -*-
