@@ -1,0 +1,16 @@
+.gitignore
+README
+setup.py
+couchdb_session.egg-info/PKG-INFO
+couchdb_session.egg-info/SOURCES.txt
+couchdb_session.egg-info/dependency_links.txt
+couchdb_session.egg-info/entry_points.txt
+couchdb_session.egg-info/not-zip-safe
+couchdb_session.egg-info/requires.txt
+couchdb_session.egg-info/top_level.txt
+couchdbsession/__init__.py
+couchdbsession/a8n.py
+couchdbsession/session.py
+couchdbsession/tests/__init__.py
+couchdbsession/tests/test_a8n.py
+couchdbsession/tests/test_session.py
