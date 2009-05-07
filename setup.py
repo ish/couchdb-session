@@ -20,6 +20,7 @@ setup(name='couchdb-session',
       install_requires=[
           # -*- Extra requirements: -*-
           'couchdb',
+          'PEAK-Rules',
       ],
       entry_points="""
       # -*- Entry points: -*-
