@@ -21,6 +21,7 @@ setup(name='couchdb-session',
           # -*- Extra requirements: -*-
           'couchdb',
           'PEAK-Rules',
+          'ProxyTypes',
       ],
       entry_points="""
       # -*- Entry points: -*-
