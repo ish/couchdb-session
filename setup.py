@@ -25,4 +25,5 @@ setup(name='couchdb-session',
       entry_points="""
       # -*- Entry points: -*-
       """,
+      test_suite='couchdbsession.tests',
       )
