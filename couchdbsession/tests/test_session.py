@@ -11,7 +11,7 @@ SERVER_URL = 'http://localhost:5984/'
 
 class TempDatabaseMixin(object):
     def setUp(self):
-        self.db_name = 'test_'+str(uuid.uuid4())
+        self.db_name = 'test-couchdbsession-'+str(uuid.uuid4())
         self.server = couchdb.Server(SERVER_URL)
         self.db = self.server.create(self.db_name)
     def tearDown(self):
