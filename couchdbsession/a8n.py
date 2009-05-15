@@ -7,7 +7,7 @@ import datetime
 import itertools
 import types
 import UserDict
-from peak.rules import abstract, when
+from simplegeneric import generic
 from peak.util.proxies import ObjectWrapper
 import couchdb
 from decimal import Decimal
@@ -55,37 +55,6 @@ class Tracker(object):
         """
         return iter(self._changes)
 
-    @abstract
-    def _track(self, obj, path):
-        pass
-
-    @when(_track, (types.NoneType,))
-    @when(_track, (bool,))
-    @when(_track, (float,))
-    @when(_track, (int,))
-    @when(_track, (long,))
-    @when(_track, (str,))
-    @when(_track, (unicode,))
-    @when(_track, (datetime.datetime,))
-    @when(_track, (datetime.date,))
-    @when(_track, (datetime.time,))
-    @when(_track, (Decimal,))
-    @when(_track, (tuple,))
-    def _track_immutable(self, obj, path):
-        return obj
-
-    @when(_track, (couchdb.Document,))
-    def _track_doc(self, obj, path):
-        return Document(obj, self._make_recorder(path))
-
-    @when(_track, (dict,))
-    def _track_dict(self, obj, path):
-        return Dictionary(obj, self._make_recorder(path))
-
-    @when(_track, (list,))
-    def _track_list(self, obj, path):
-        return List(obj, self._make_recorder(path))
-
     def append(self, change):
         if not self._changes and self._dirty_callback:
             self._dirty_callback()
@@ -95,6 +64,41 @@ class Tracker(object):
         id = self._recorder_id.next()
         self._recorder_paths[id] = path
         return Recorder(self, id)
+
+    def _track(self, obj, path):
+        return _track(obj, self, path)
+
+
+@generic
+def _track(obj, path, tracker):
+    pass
+
+@_track.when_type(types.NoneType)
+@_track.when_type(bool)
+@_track.when_type(float)
+@_track.when_type(int)
+@_track.when_type(long)
+@_track.when_type(str)
+@_track.when_type(unicode)
+@_track.when_type(datetime.datetime)
+@_track.when_type(datetime.date)
+@_track.when_type(datetime.time)
+@_track.when_type(Decimal)
+@_track.when_type(tuple)
+def _track_immutable(obj, tracker, path):
+    return obj
+
+@_track.when_type(couchdb.Document)
+def _track_doc(obj, tracker, path):
+    return Document(obj, tracker._make_recorder(path))
+
+@_track.when_type(dict)
+def _track_dict(obj, tracker, path):
+    return Dictionary(obj, tracker._make_recorder(path))
+
+@_track.when_type(list)
+def _track_list(obj, tracker, path):
+    return List(obj, tracker._make_recorder(path))
 
 
 class Recorder(object):

@@ -9,9 +9,9 @@ Requirements:
 couchdb - does all the real work. easy_install python-couchdb or download it
 from http://pypi.python.org/pypi/CouchDB.
 
-ProxyTypes - used to simplify wrapping documents to spot changes.
-"easy_install ProxyTypes" or download it from
-http://pypi.python.org/pypi/ProxyTypes.
+simplegeneric - used to simplify wrapping documents to spot changes.
+"easy_install simplegeneric" or download it from
+http://pypi.python.org/pypi/simplegeneric.
 
 
 Usage

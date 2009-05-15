@@ -20,7 +20,7 @@ setup(name='couchdb-session',
       install_requires=[
           # -*- Extra requirements: -*-
           'couchdb',
-          'PEAK-Rules',
+          'simplegeneric',
           'ProxyTypes',
       ],
       entry_points="""
