@@ -1,8 +1,12 @@
+import logging
 import itertools
 import uuid
 import couchdb
 
 from couchdbsession import a8n
+
+
+log = logging.getLogger(__name__)
 
 
 class Session(object):
@@ -173,8 +177,12 @@ class Session(object):
                 self._db.update(deletions)
             # Perform updates and fix up the cache with the new _revs.
             if updates:
-                for response in self._db.update(updates):
-                    self._cache[response['_id']].__subject__['_rev'] = response['_rev']
+                for (success, docid, rev_or_exc) in self._db.update(updates):
+                    if success:
+                        self._cache[docid].__subject__['_rev'] = rev_or_exc
+                    else:
+                        # XXX Needs to be fixed.
+                        log.error('bulk update error: docid=%r, exc=%r', docid, rev_or_exc)
             # Reset internal tracking now everything's been written.
             self._post_flush(deleted, created, changed)
 

@@ -144,7 +144,7 @@ class TestSessionChangeRecorder(BaseTestCase):
         assert len(self.session._changed) == 0
 
     def test_change_multi_existing(self):
-        doc_ids = list(r['_id'] for r in self.db.update([{}, {}]))
+        doc_ids = list(r[1] for r in self.db.update([{}, {}]))
         doc1 = self.session.get(doc_ids[0])
         doc2 = self.session.get(doc_ids[1])
         assert not self.session._changed
