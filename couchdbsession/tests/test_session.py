@@ -360,6 +360,21 @@ class TestFlushHook(TempDatabaseMixin, unittest.TestCase):
                 }},
             ])
 
+    def test_pre_flush_type(self):
+        def pre_flush_hook(session, deletions, additions, changes):
+            for o in additions:
+                self.assertTrue(not isinstance(o, a8n.Dictionary))
+            for (o, _) in changes:
+                self.assertTrue(not isinstance(o, a8n.Dictionary))
+        S = session.Session(self.db)
+        doc1id = S.create({'model_type': 'test'})
+        S.flush()
+        S = session.Session(self.db, pre_flush_hook=pre_flush_hook)
+        doc1 = S.get(doc1id)
+        doc1['foo'] = 'bar'
+        doc2id = S.create({})
+        S.flush()
+
     def test_pre_flush_hook_arg(self):
         S = session.Session(self.db, pre_flush_hook=self._flush_hook)
         self._run_test_with_session(S)

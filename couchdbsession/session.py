@@ -232,9 +232,9 @@ class Session(object):
             def gen_deletions():
                 return deleted.itervalues()
             def gen_additions():
-                return (self._cache[doc_id] for doc_id in created)
+                return (self._cache[doc_id].__subject__ for doc_id in created)
             def gen_changes():
-                changes = (self._cache[doc_id] for doc_id in changed)
+                changes = (self._cache[doc_id].__subject__ for doc_id in changed)
                 changes = ((doc, iter(self._trackers[doc['_id']])) for doc in changes)
                 return changes
             self.pre_flush_hook(gen_deletions(), gen_additions(), gen_changes())
