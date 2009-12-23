@@ -62,6 +62,12 @@ class TestDictTracking(unittest.TestCase):
         obj['foo'] = 'bar'
         assert list(tracker) == [{'action': 'edit', 'path': ['foo'], 'value': 'bar', 'was': 'foo'}]
 
+    def test_change_to_same(self):
+        tracker = a8n.Tracker()
+        obj = tracker.track({'foo': 'bar'})
+        obj['foo'] = 'bar'
+        assert list(tracker) == []
+
     def test_change_same_item(self):
         tracker = a8n.Tracker()
         obj = tracker.track({'foo': 'foo'})
@@ -141,7 +147,7 @@ class TestDictTracking(unittest.TestCase):
         tracker = a8n.Tracker()
         obj = tracker.track({'foo': {}})
         assert hasattr(obj['foo'], '__subject__')
-        obj['foo'] = {}
+        obj['foo'] = {'different': 'dict'}
         assert not hasattr(obj['foo'], '__subject__')
 
 
@@ -152,6 +158,12 @@ class TestListTracking(unittest.TestCase):
         obj = tracker.track(['foo'])
         obj[0] = 'bar'
         assert list(tracker) == [{'action': 'edit', 'path': [0], 'value': 'bar', 'was': 'foo'}]
+
+    def test_change_to_same(self):
+        tracker = a8n.Tracker()
+        obj = tracker.track(['foo'])
+        obj[0] = 'foo'
+        assert list(tracker) == []
 
     def test_setitem_error(self):
         tracker = a8n.Tracker()
@@ -335,7 +347,7 @@ class TestListTracking(unittest.TestCase):
     def test_edits_not_wrapped(self):
         tracker = a8n.Tracker()
         obj = tracker.track([[]])
-        obj[0] = []
+        obj[0] = ['different', 'list']
         # getitem
         assert not hasattr(obj[0], '__subject__')
         # iter

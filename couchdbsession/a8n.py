@@ -213,7 +213,7 @@ class Dictionary(UserDict.DictMixin, ObjectWrapper):
             was = self.__subject__.get(name, _SENTINEL)
             if was is _SENTINEL:
                 self.__recorder.create(name, value)
-            else:
+            elif value != was:
                 self.__recorder.edit(name, value, was)
         return self.__subject__.__setitem__(name, value)
 
@@ -257,7 +257,8 @@ class List(ObjectWrapper):
     def __setitem__(self, pos, item):
         was = self.__subject__[pos]
         self.__subject__.__setitem__(pos, item)
-        self.__recorder.edit(pos, item, was)
+        if item != was:
+            self.__recorder.edit(pos, item, was)
 
     def __delitem__(self, pos):
         was = self.__subject__[pos]
