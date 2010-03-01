@@ -1,3 +1,4 @@
 couchdbsession.egg-info
 .*.swp
 *.pyc
+*.egg-info
