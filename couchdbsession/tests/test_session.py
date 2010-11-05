@@ -82,6 +82,16 @@ class TestViewResults(PopulatedDatabaseBaseTestCase):
     def test_rows(self):
         assert isinstance(self.session.view('_all_docs').rows[0], session.SessionRow)
 
+    def test_getitem_key(self):
+        results = self.session.view('_all_docs')['0']
+        assert isinstance(results, session.SessionViewResults)
+        assert len(results) == 1
+
+    def test_getitem_slice(self):
+        results = self.session.view('_all_docs')['0':'2']
+        assert isinstance(results, session.SessionViewResults)
+        assert len(results) == 3
+
 
 class TestCaching(PopulatedDatabaseBaseTestCase):
 

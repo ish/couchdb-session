@@ -268,7 +268,7 @@ class SessionViewResults(object):
         return len(self._view_results)
 
     def __getitem__(self, key):
-        return SessionViewResults(self._session, self._view_results(key))
+        return SessionViewResults(self._session, self._view_results[key])
 
     def __iter__(self):
         for row in self._view_results:
