@@ -386,6 +386,12 @@ class TestNested(unittest.TestCase):
         obj[0].append('foo')
         assert list(tracker) == [{'action': 'create', 'path': [0, 0], 'value': 'foo'}]
 
+    def test_disappearing_tracked_problem(self):
+        tracker = a8n.Tracker()
+        obj = tracker.track({'list': [{}]})
+        obj['list'] = list(obj['list'])
+        assert list(obj['list']) == [{}]
+
 
 class TestChangingPaths(unittest.TestCase):
 

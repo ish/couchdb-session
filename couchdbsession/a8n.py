@@ -66,6 +66,8 @@ class Tracker(object):
         return Recorder(self, id)
 
     def _track(self, obj, path):
+        if isinstance(obj, Tracked):
+            return obj
         return _track(obj, self, path)
 
 
@@ -190,7 +192,13 @@ class Recorder(object):
             del self._tracker._changes[i]
 
 
-class Dictionary(UserDict.DictMixin, ObjectWrapper):
+class Tracked(ObjectWrapper):
+    """
+    Base class for all "tracked" objects.
+    """
+
+
+class Dictionary(UserDict.DictMixin, Tracked):
 
     # TODO:
     #   __contains__(), __iter__(), and iteritems() to improve performance
@@ -230,7 +238,7 @@ class Document(Dictionary):
     _private = ['_id', '_rev', '_attachments']
 
 
-class List(ObjectWrapper):
+class List(Tracked):
 
     __recorder = None
 
